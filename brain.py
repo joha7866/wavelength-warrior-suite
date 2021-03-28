@@ -1,122 +1,32 @@
 #!/usr/bin/env python3
-'''Manage Pixy, RGB Sense Arduino, and Ultrasonics,
-make decisions,
-then command motors'''
+'''Manage Pixy, RGB Sense Arduino, and Ultrasonics, make decisions, then command motors'''
 import time
-import RPi.GPIO as GP
 from smbus2 import SMBus, i2c_msg
 
-import pixy_smbus as user_pixy
+import modules.pixy_smbus as pixy_lib
+import modules.ultrasonic_gpio as us_lib
+import modules.motor_smbus as motor_lib
 
-#i2c info
+#i2c addressses
 MOTOR_CTRL_ADDR = 0x69
 RGB_SENSE_ADDR = 0x55
 PIXY_ADDR = 0x54
 MAX_I2C_MSG_BYTES = 16
 
-#motor info
-FORWARD_CMD = [ord('F')]
-LEFT_90_CMD = [ord('L')]
-RIGHT_90_CMD = [ord('R')]
-STOP_CMD = [ord('S')]
-CLEAR_ERROR_CMD = [ord('E')]
-POLL_CMD = [ord('.')]
-
-#ultrasonic info
+#ultrasonic gpios
 LEFT_ULTRASONIC_PAIR = [5,6]
 RIGHT_ULTRASONIC_PAIR = [23,24]
 
-ULTRASONIC_MEAS_TIMEOUT_S = 0.01
-
-SIDE_DIST_TOL_CM = 40
-
-#pixy info
-version_req_cmd = [0xae, 0xc1, 0x0e, 0x00]
-get_blocks_cmd =  [0xae, 0xc1, 0x20, 0x02, 0x01, 0x01]
+#behavior metrics
+SIDE_PROX_THRESH_CM = 40
 
 
-def setup_ultrasonic_gpio_pair(ultrasonic_gpio_pair):
-    '''Runs GPIO library setup commands for a given Trig/Echo pair.'''
-    GP.setup(ultrasonic_gpio_pair[0], GP.OUT)
-    GP.setup(ultrasonic_gpio_pair[1], GP.IN)
-    GP.output(ultrasonic_gpio_pair[0], 0)
 
-def measure_ultrasonic_distance(ultrasonic_gpio_pair):
-    '''Returns ultrasonic distance in cm or -1 if timeout occured.'''
-    timeout = False
-    #set trigger high
-    GP.output(ultrasonic_gpio_pair[0], 1)
-    # set Trigger after 0.01ms to LOW
-    time.sleep(0.000010)
-    GP.output(ultrasonic_gpio_pair[0], 0)
-
-    # save start_time
-    start_time = time.time()
-    while 1:
-        if GP.input(ultrasonic_gpio_pair[1]) == 1:
-            start_time = time.time()
-            break
-
-        if time.time() > start_time+ULTRASONIC_MEAS_TIMEOUT_S:
-            timeout = True
-            break
-
-    # save time of arrival
-    stop_time = time.time()
-    while 1:
-        if GP.input(ultrasonic_gpio_pair[1]) == 0:
-            stop_time = time.time()
-            break
-
-        if time.time() > start_time+ULTRASONIC_MEAS_TIMEOUT_S:
-            timeout = True
-            break
-
-    if timeout:
-        print('ULTRASONIC TIMEOUT: '+str(ultrasonic_gpio_pair))
-        return -1
-
-    # time difference between start and arrival
-    time_elapsed = stop_time - start_time
-    # multiply with the sonic speed (34300 cm/s)
-    # and divide by 2, because there and back
-    distance = (time_elapsed * 34300) / 2
-    return distance
-
-
-def send_i2c_cmd(bus, addr, cmd):
-    '''Generic function to send a pair of receive, request commands to secondaries.
-        Returns request data as an i2c_msg.'''
-    try:
-        write = i2c_msg.write(addr, cmd)
-        read = i2c_msg.read(addr, MAX_I2C_MSG_BYTES)
-        bus.i2c_rdwr(write, read)
-        print('Wrote: ',[chr(ch) for ch in cmd])
-        print('Read:  ',[chr(ch) for ch in read])
-    except IOError:
-        report_ioerror(addr, cmd)
-        read = []
-    return read
-
-def report_ioerror(addr, cmd):
-    if addr == MOTOR_CTRL_ADDR:
-        dest = 'Motor Control'
-    elif addr == RGB_SENSE_ADDR:
-        dest = 'RGB Sense'
-    elif addr == PIXY_ADDR:
-        dest = 'Pixy'
-    else:
-        dest = 'UNRECOGNIZED DEST'
-    
-    print(f'E: IOError with Dest: {dest}, Cmd: {str(cmd)}')
 
 
 if __name__ == '__main__':
     #setup
-    GP.setmode(GP.BCM)
-    setup_ultrasonic_gpio_pair(LEFT_ULTRASONIC_PAIR)
-    setup_ultrasonic_gpio_pair(RIGHT_ULTRASONIC_PAIR)
-    time.sleep(2) #wait for ultrasonics to settle
+    us_lib.setup_ultrasonic_system([LEFT_ULTRASONIC_PAIR,RIGHT_ULTRASONIC_PAIR])
 
     GOOD_TO_GO = True
     LANE_EDGE_FLAG = False
@@ -191,5 +101,5 @@ if __name__ == '__main__':
     if not GOOD_TO_GO:
         print('I: Logical termination')
 
-    GP.cleanup()
+    us_lib.cleanup()
     print('Graceful exit complete')
