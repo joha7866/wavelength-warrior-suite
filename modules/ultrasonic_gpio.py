@@ -12,7 +12,7 @@ __LEFT_ULTRASONIC_PAIR = [5,6]
 __RIGHT_ULTRASONIC_PAIR = [23,24]
 
 #ultrasonic info
-ULTRASONIC_MEAS_TIMEOUT_S = 0.01
+ULTRASONIC_MEAS_TIMEOUT_S = 0.05
 
 
 def setup_ultrasonic_system(ultrasonic_pair_list):
@@ -79,7 +79,7 @@ def cleanup():
 
 
 if __name__ == '__main__':
-    print("Running ultrasonic debug"))
+    print("Running ultrasonic debug")
     setup_ultrasonic_system([__LEFT_ULTRASONIC_PAIR,__RIGHT_ULTRASONIC_PAIR])
 
     try:

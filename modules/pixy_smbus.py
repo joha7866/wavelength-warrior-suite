@@ -159,3 +159,4 @@ if __name__ == '__main__':
 
         except KeyboardInterrupt:
             print('Cleaning up and exiting')
+    print('Pixy smbus debug exited gracefully')

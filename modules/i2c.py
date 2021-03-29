@@ -3,6 +3,14 @@
 import time
 from smbus2 import SMBus, i2c_msg
 
+__DEBUG_FLAG = False
+
+#i2c addressses
+MOTOR_CTRL_ADDR = 0x69
+RGB_SENSE_ADDR = 0x55
+PIXY_ADDR = 0x54
+MAX_I2C_MSG_BYTES = 16
+
 
 def send_i2c_cmd(bus, addr, cmd):
     '''Generic function to send a pair of receive, request commands to secondaries.
@@ -11,8 +19,9 @@ def send_i2c_cmd(bus, addr, cmd):
         write = i2c_msg.write(addr, cmd)
         read = i2c_msg.read(addr, MAX_I2C_MSG_BYTES)
         bus.i2c_rdwr(write, read)
-        print('Wrote: ',[chr(ch) for ch in cmd])
-        print('Read:  ',[chr(ch) for ch in read])
+        if __DEBUG_FLAG:
+            print('Wrote: ',[chr(ch) for ch in cmd])
+            print('Read:  ',[chr(ch) for ch in read])
     except IOError:
         report_ioerror(addr, cmd)
         read = []
