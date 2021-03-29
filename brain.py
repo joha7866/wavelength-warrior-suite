@@ -26,6 +26,7 @@ if __name__ == '__main__':
     TARGET_ALIGNED = False
     TURN_ACTIVE_FLAG = False
     RGB_DATA_GOOD_FLAG = True
+    FINAL_TARGET_SWEEP_FLAG = True
     ultrasonic_timestamp = time.time()
     turn_timestamp = time.time()
     edge_timestamp = time.time()
@@ -62,11 +63,15 @@ if __name__ == '__main__':
                     [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
                     TARGET_IN_SIGHT = True
                     print('I: Target in sight')
-                    if size_state == 'G':
+                    print(f'I: [x, size] [{chr(x_state)}, {chr(size_state)}]')
+
+                    if x_state == ord('G') and size_state == ord('G'):
                         TARGET_IN_RANGE = True
                         print('I: TARGET IN RANGE!!!')
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
-                        time.sleep(5)
+                        time.sleep(10)
+                    elif size_state == ord('G'):
+                        FINAL_TARGET_SWEEP_FLAG = True
                 else:
                     TARGET_IN_SIGHT = False
 
@@ -82,7 +87,15 @@ if __name__ == '__main__':
                     print(f"Distance right: {dist_right:.1f} cm")
 
                 #update motor command per-loop
-                if TURN_ACTIVE_FLAG:
+                if FINAL_TARGET_SWEEP_FLAG:
+                    if x_state =='R':
+                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.RIGHT_90_CMD)
+                    elif x_state =='L':
+                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.LEFT_90_CMD)
+                    else:
+                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
+                        print("I: Motor Logic has achieved objective")
+                elif TURN_ACTIVE_FLAG:
                     if time.time() > turn_timestamp+2.0:
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
                         TURN_ACTIVE_FLAG = False
