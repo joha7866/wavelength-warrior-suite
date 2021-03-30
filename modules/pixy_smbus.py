@@ -12,9 +12,9 @@ USE_BOTH_SIGMAP = 0x03
 
 MAP_X_LENGTH = 316
 MAP_Y_LENGTH = 208
-MAP_X_CENTER_TOL = 0.1
+MAP_X_CENTER_TOL = 0.2
 MAP_Y_CENTER_TOL = 0.2
-MAP_SIZE_TOL = 0.2
+MAP_SIZE_TOL = 0.45
 
 X_LOWER = MAP_X_LENGTH/2-MAP_X_LENGTH*MAP_X_CENTER_TOL/2
 X_UPPER = MAP_X_LENGTH/2+MAP_X_LENGTH*MAP_X_CENTER_TOL/2
@@ -108,9 +108,9 @@ def evaluate_cc_block(block_msg):
     height = block_msg.get_height()
 
     if x_position < X_LOWER:
-        x_state = 'R'
-    elif x_position > X_UPPER:
         x_state = 'L'
+    elif x_position > X_UPPER:
+        x_state = 'R'
     else:
         x_state = 'G'
 

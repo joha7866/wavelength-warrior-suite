@@ -8,8 +8,8 @@ import time
 import RPi.GPIO as GP
 
 #local ultrasonic gpios for debug
-__LEFT_ULTRASONIC_PAIR = [5,6]
-__RIGHT_ULTRASONIC_PAIR = [23,24]
+__LEFT_ULTRASONIC_PAIR = [19,26]
+__RIGHT_ULTRASONIC_PAIR = [16,20]
 
 #ultrasonic info
 ULTRASONIC_MEAS_TIMEOUT_S = 0.05

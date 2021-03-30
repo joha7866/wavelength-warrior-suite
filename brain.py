@@ -26,11 +26,16 @@ if __name__ == '__main__':
     TARGET_ALIGNED = False
     TURN_ACTIVE_FLAG = False
     RGB_DATA_GOOD_FLAG = True
-    FINAL_TARGET_SWEEP_FLAG = True
+    FINAL_TARGET_SWEEP_FLAG = False
+    TARGET_STATUS = 'NONE'
     ultrasonic_timestamp = time.time()
     turn_timestamp = time.time()
     edge_timestamp = time.time()
     loop_count = 0
+    x_state =''
+    y_state =''
+    size_state =''
+    pixy_timestamp = time.time()
     with SMBus(1) as bus:
         try:
             #loop
@@ -42,6 +47,9 @@ if __name__ == '__main__':
                 if not list(resp):
                     if not TURN_ACTIVE_FLAG:
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
+                    print('E: Bad RGB response')
+                    RGB_DATA_GOOD_FLAG = False
+                elif list(resp)[0] == 0xff:
                     print('E: Bad RGB response')
                     RGB_DATA_GOOD_FLAG = False
                 else:
@@ -58,26 +66,32 @@ if __name__ == '__main__':
 
                 #check pixy every loop
                 resp = send_i2c_cmd(bus, PIXY_ADDR, pixy_lib.get_blocks_cmd)
-                block_msg = pixy_lib.GetBlocksMsg(resp)
-                if block_msg.type_code == 33 and block_msg.payload_length != 0:
-                    [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
-                    TARGET_IN_SIGHT = True
-                    print('I: Target in sight')
-                    print(f'I: [x, size] [{chr(x_state)}, {chr(size_state)}]')
-
-                    if x_state == ord('G') and size_state == ord('G'):
-                        TARGET_IN_RANGE = True
-                        print('I: TARGET IN RANGE!!!')
-                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
-                        time.sleep(10)
-                    elif size_state == ord('G'):
-                        FINAL_TARGET_SWEEP_FLAG = True
+                if not list(resp):
+                    print('E: Pixy data failed. Keeping latest state.')
                 else:
-                    TARGET_IN_SIGHT = False
+                    block_msg = pixy_lib.GetBlocksMsg(resp)
+                    if block_msg.type_code == 33 and block_msg.payload_length != 0:
+                        pixy_timestamp = time.time()
+                        [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
+                        TARGET_STATUS = 'SIGHTED'
+                        # print('I: Target in sight')
+                        print(f'I: [x, size] [{chr(x_state)}, {chr(size_state)}]')
 
+                        if x_state == ord('G') and size_state == ord('G'):
+                            TARGET_STATUS = 'LOCKED'
+                            print('I: TARGET IN RANGE!!!')
+                        elif size_state == ord('G'):
+                            TARGET_STATUS = 'RANGED'
+                        elif x_state == ord('G'):
+                            TARGET_STATUS = 'CENTERED'
+
+                if time.time() > pixy_timestamp+5.0:
+                    TARGET_STATUS = 'NONE'
+
+                print(f'I: Target state {TARGET_STATUS}')
 
                 #check ultrasonics only when necessary
-                if (LANE_EDGE_FLAG or time.time() > ultrasonic_timestamp+1) and not TURN_ACTIVE_FLAG:
+                if (LANE_EDGE_FLAG or time.time() > ultrasonic_timestamp+1):
                     time.sleep(0.1)
                     dist_left = us_lib.measure_ultrasonic_distance(LEFT_ULTRASONIC_PAIR)
                     time.sleep(0.1)
@@ -87,45 +101,52 @@ if __name__ == '__main__':
                     print(f"Distance right: {dist_right:.1f} cm")
 
                 #update motor command per-loop
-                if FINAL_TARGET_SWEEP_FLAG:
-                    if x_state =='R':
+                if TARGET_STATUS == 'RANGED' or TARGET_STATUS == 'LOCKED':
+                    if x_state == 'R':
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.RIGHT_90_CMD)
-                    elif x_state =='L':
+                    elif x_state == 'L':
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.LEFT_90_CMD)
-                    else:
+                    elif x_state == 'G':
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
                         print("I: Motor Logic has achieved objective")
+                        time.sleep(30)
+                    else:
+                        print('E: bad final logic')
                 elif TURN_ACTIVE_FLAG:
-                    if time.time() > turn_timestamp+2.0:
+                    if time.time() > turn_timestamp+1.80:
                         send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
                         TURN_ACTIVE_FLAG = False
                         print('Turn complete')
                 else:
+                    time.sleep(0.01)
                     resp = send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.POLL_CMD)
-                    available = list(resp)[1] == ord('D')
-                    if available:
-                        if LANE_EDGE_FLAG and not TURN_ACTIVE_FLAG:
-                            if dist_left < SIDE_PROX_THRESH_CM:
-                                send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.RIGHT_90_CMD)
-                                turn_timestamp = time.time()
-                                TURN_ACTIVE_FLAG = True
-                            elif dist_right < SIDE_PROX_THRESH_CM:
-                                send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.LEFT_90_CMD)
-                                turn_timestamp = time.time()
-                                TURN_ACTIVE_FLAG = True
+                    if list(resp):
+                        available = list(resp)[1] == ord('D')
+                        if available:
+                            if LANE_EDGE_FLAG and not TURN_ACTIVE_FLAG:
+                                if 0 < dist_left < SIDE_PROX_THRESH_CM or (dist_right > SIDE_PROX_THRESH_CM and dist_left<0):
+                                    send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.RIGHT_90_CMD)
+                                    turn_timestamp = time.time()
+                                    TURN_ACTIVE_FLAG = True
+                                elif 0 < dist_right < SIDE_PROX_THRESH_CM or (dist_left > SIDE_PROX_THRESH_CM and dist_right<0):
+                                    send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.LEFT_90_CMD)
+                                    turn_timestamp = time.time()
+                                    TURN_ACTIVE_FLAG = True
+                                else:
+                                    print('E: RGB active, but no clear turn condition!')
+                                    GOOD_TO_GO = False
+                            elif RGB_DATA_GOOD_FLAG:
+                                if list(resp)[0] != ord('F'):
+                                    send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.FORWARD_CMD)
+                                    print('I: starting forward again')
                             else:
-                                print('E: RGB active, but no clear turn condition!')
-                                GOOD_TO_GO = False
-                        elif RGB_DATA_GOOD_FLAG:
-                            if list(resp)[0] != ord('F'):
-                                send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.FORWARD_CMD)
-                                print('I: starting forward again')
-                        else:
-                            print('I: want forward but RGB data bad')
-                    elif list(resp)[0] == ord('!'):
-                        print(f'E: Sec error: {list(resp)}')
-                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.CLEAR_ERROR_CMD)
-                        print('I: Clearing sec error')
+                                print('I: want forward but RGB data bad')
+                        elif list(resp)[0] == ord('!'):
+                            print(f'E: Sec error: {list(resp)}')
+                            send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.CLEAR_ERROR_CMD)
+                            print('I: Clearing sec error')
+                    else: #bad resp
+                        print('E: Index error resulting from ioerror...')
 
 
                 time.sleep(0.1)
