@@ -14,7 +14,8 @@ MAP_X_LENGTH = 316
 MAP_Y_LENGTH = 208
 MAP_X_CENTER_TOL = 0.2
 MAP_Y_CENTER_TOL = 0.2
-MAP_SIZE_TOL = 0.45
+MAP_SIZE_CLOSE_TOL = 0.9
+MAP_SIZE_TOL = 0.33
 
 X_LOWER = MAP_X_LENGTH/2-MAP_X_LENGTH*MAP_X_CENTER_TOL/2
 X_UPPER = MAP_X_LENGTH/2+MAP_X_LENGTH*MAP_X_CENTER_TOL/2
@@ -121,7 +122,10 @@ def evaluate_cc_block(block_msg):
     else:
         y_state = 'G'
 
-    if (width > MAP_X_LENGTH*MAP_SIZE_TOL or
+    if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
+            height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
+        size_state = 'C'
+    elif (width > MAP_X_LENGTH*MAP_SIZE_TOL or
             height > MAP_Y_LENGTH*MAP_SIZE_TOL):
         size_state = 'G'
     else:

@@ -8,6 +8,8 @@ import modules.pixy_smbus as pixy_lib
 import modules.ultrasonic_gpio as us_lib
 import modules.motor_smbus as motor_lib
 
+__DEBUG = False
+
 #ultrasonic gpios
 LEFT_ULTRASONIC_PAIR = [19,26]
 RIGHT_ULTRASONIC_PAIR = [16,20]
@@ -45,6 +47,29 @@ if __name__ == '__main__':
             while GOOD_TO_GO:
                 print(f'>>>NEW LOOP: {loop_count}')
 
+                resp = send_i2c_cmd(bus, RGB_SENSE_ADDR, [ord('x')])
+                if not list(resp):
+                    if __DEBUG:
+                        print('E: Bad RGB response')
+                    RGB_DATA_GOOD_FLAG = False
+                elif list(resp)[0] == 0xff:
+                    if __DEBUG:
+                        print('E: Bad RGB response')
+                    RGB_DATA_GOOD_FLAG = False
+                else:
+                    RGB_DATA_GOOD_FLAG = True
+                    if __DEBUG:
+                        print(f'I: RGB state {hex(list(resp)[0])}')
+                    if list(resp)[0] != 0:
+                        
+                        send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
+                        if __DEBUG:
+                            print('Lane edge detected!')
+                        LANE_EDGE_FLAG = True
+                        
+                    else:
+                        LANE_EDGE_FLAG = False
+
                 #check pixy every loop
                 resp = send_i2c_cmd(bus, PIXY_ADDR, pixy_lib.get_blocks_cmd)
                 if not list(resp):
@@ -73,7 +98,7 @@ if __name__ == '__main__':
                 if TARGET_STATUS == 'LOCKED':
                     send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.STOP_CMD)
                     print("I: Motor Logic has achieved objective")
-                elif TARGET_STATUS == 'CENTERED':
+                elif TARGET_STATUS == 'CENTERED' and not LANE_EDGE_FLAG:
                     send_i2c_cmd(bus, MOTOR_CTRL_ADDR, motor_lib.FORWARD_CMD)
                 elif TARGET_STATUS == 'RANGED':
                     if x_state == ord('R'):
