@@ -266,27 +266,33 @@ if __name__ == "__main__":
         us_grp = UltrasonicGroup([19,26], [16,20], US_LOCK)
 
         pixy.start_sensor_in_bg()
-        us_grp = start_sensor_in_bg()
+        us_grp.start_sensor_in_bg()
 
-        while 1:
-            #poll the motor
-            resp = motor.send_cmd(motor.Cmds.poll)
-            if not resp:
-                print('motor timeout for poll cmd')
-                continue
+        try: 
+            while 1:
+                #poll the motor
+                resp = motor.send_cmd(motor.Cmds.poll)
+                if not resp:
+                    print('motor timeout for poll cmd')
+                    continue
 
-            if pixy.target_status == pixy.Status.sighted:
-                resp = motor.send_cmd(motor.Cmds.stop)
-            else:
-                resp = motor.send_cmd(motor.Cmds.forward)
+                if pixy.target_status == pixy.Status.sighted:
+                    resp = motor.send_cmd(motor.Cmds.stop)
+                else:
+                    resp = motor.send_cmd(motor.Cmds.forward)
 
-            #debug data
-            print(f'Dist Left: {us_grp.dist_left} cm')
-            print(f'Dist Right: {us_grp.dist_right} cm')
-            print(f'Target Status: {pixy.target_status}')
+                #debug data
+                print(f'Dist Left: {us_grp.dist_left} cm')
+                print(f'Dist Right: {us_grp.dist_right} cm')
+                print(f'Target Status: {pixy.target_status}')
 
-            #debug delay
-            time.sleep(1.0)
+                #debug delay
+                time.sleep(1.0)
+        except KeyboardInterrupt:
+            pixy.stop_sensor_in_bg()
+            us_grp.stop_sensor_in_bg()
+            print('clean exit')
+
 
 
 
