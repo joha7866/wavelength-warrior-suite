@@ -2,7 +2,8 @@
 ''''''
 
 import time
-from  multirpocessing import Process, Lock
+import RPi.GPIO as GP
+from  multiprocessing import Process, Lock
 from enum import Enum
 from smbus2 import SMBus, i2c_msg
 
@@ -21,7 +22,7 @@ class SmbusDevice(object):
     def __init__(self, bus, addr, lock):
         self.bus = bus
         self.addr = addr
-        self.i2c_lock = lock
+        self.lock = lock
 
 
 class Motor(SmbusDevice):
@@ -45,7 +46,7 @@ class Motor(SmbusDevice):
                 self.lock.release()
                 if not list(resp):
                     continue #try again
-                return = resp
+                return resp
             else:
                 continue #try again
         return False
@@ -59,7 +60,7 @@ class Pixy(SmbusDevice):
         centered = 3
         locked = 4
 
-    def __init__(self):
+    def __init__(self, bus, addr, lock):
         super().__init__(bus, addr, lock)
         self.blocks = []
         self.target_status = self.Status.none
@@ -86,11 +87,12 @@ class Pixy(SmbusDevice):
             else:
                 continue #try again
 
-            while time.time <= loop_ts + period_s:
+            while time.time() <= loop_ts + period_s:
                 #do nothing
+                pass
 
-    def start_sensor_in_bg(self, period_s=0.01, cmd=pixy_lib.get_blocks_cmd)
-        self.proc = Process(target=self.run_pixy_poller, args=(self, period_s, cmd))
+    def start_sensor_in_bg(self, period_s=0.01, cmd=pixy_lib.get_blocks_cmd):
+        self.proc = Process(target=self.run_pixy_poller, args=(period_s, cmd))
         self.proc.start()
 
     def stop_sensor_in_bg(self):
@@ -132,7 +134,7 @@ class UltrasonicSensor(object):
                     start_time = time.time()
                     break
                 
-                if time.time() > start_time+timeout_s
+                if time.time() > start_time+timeout_s:
                     distance = -1.0
                     break
 
@@ -145,7 +147,7 @@ class UltrasonicSensor(object):
                         stop_time = time.time()
                         break
 
-                    if time.time() > start_time+timeout_s
+                    if time.time() > start_time+timeout_s:
                         distance = -1.0
                         break
 
@@ -163,9 +165,9 @@ class UltrasonicSensor(object):
 
 
 class UltrasonicGroup(object):
-    def __init__(self, left_us_pair, right_us_pair):
-        self.left_us_pair = UltrasonicSensor(left_us_pair)
-        self.right_us_pair = UltrasonicSensor(right_us_pair)
+    def __init__(self, left_us_pair, right_us_pair, lock):
+        self.left_us_pair = UltrasonicSensor(left_us_pair, lock)
+        self.right_us_pair = UltrasonicSensor(right_us_pair, lock)
 
         self.dist_left = -1.0
         self.dist_right = -1.0
@@ -202,9 +204,9 @@ class Sense(object):
         self.rgb_proc = Process(target=self.rgb_check)
 
         #declare sensor data structures
-        self.us_data = {dist_forward = 0.0,
-                        dist_left = 0.0,
-                        dist_right = 0.0}
+        self.us_data = {dist_forward : 0.0,
+                        dist_left : 0.0,
+                        dist_right: 0.0}
     
     def begin(self):
         self.pixy_proc.start()
@@ -261,7 +263,7 @@ if __name__ == "__main__":
     with SMBus(1) as bus:
         motor = Motor(bus, MOTOR_CTRL_ADDR, I2C_LOCK)
         pixy = Pixy(bus, PIXY_ADDR, I2C_LOCK)
-        us_grp = UltrasonicGroup([19,26], [16,20])
+        us_grp = UltrasonicGroup([19,26], [16,20], US_LOCK)
 
         pixy.start_sensor_in_bg()
         us_grp = start_sensor_in_bg()
