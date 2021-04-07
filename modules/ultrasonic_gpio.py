@@ -12,7 +12,7 @@ __LEFT_ULTRASONIC_PAIR = [19,26]
 __RIGHT_ULTRASONIC_PAIR = [16,20]
 
 #ultrasonic info
-ULTRASONIC_MEAS_TIMEOUT_S = 0.05
+ULTRASONIC_MEAS_TIMEOUT_S = 0.1
 
 
 def setup_ultrasonic_system(ultrasonic_pair_list):
