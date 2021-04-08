@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import time
-import RPi.GPIO as GP #unnecessary with circuitpython?
+# import RPi.GPIO as GP #unnecessary with circuitpython?
 import board
 import busio
 import adafruit_tca9548a
@@ -29,13 +29,13 @@ if __name__ == "__main__":
     with busio.I2C(board.SCL, board.SDA) as bus:
 
         mux = adafruit_tca9548a.TCA9548A(bus)
-        rgb1 = adafruit_tcs34725.TCS34725(mux[0])
-        rgb2 = adafruit_tcs34725.TCS34725(mux[1])
+        rgb1 = adafruit_tcs34725.TCS34725(mux[2])
 
-        motor = I2CDevice(bus, MOTOR_CTRL_ADDR)
-        pixy = I2CDevice(bus, PIXY_ADDR)
+        motor = I2CDevice(mux[0], MOTOR_CTRL_ADDR)
+        # laser = I2CDevice(mux[1], 0x18)
+        pixy = I2CDevice(mux[7], PIXY_ADDR)
 
-        us_lib.setup_ultrasonic_system([LEFT_ULTRASONIC_PAIR, RIGHT_ULTRASONIC_PAIR])
+        # us_lib.setup_ultrasonic_system([LEFT_ULTRASONIC_PAIR, RIGHT_ULTRASONIC_PAIR])
 
         read_buff = bytearray(MAX_I2C_MSG_BYTES)
 
@@ -46,8 +46,9 @@ if __name__ == "__main__":
         try:
             while True:
                 #rgb logic
-                [lux1, lux2] = check_rgbs([rgb1, rgb2])
-                EDGE_DETECTED = (lux1 > 750) or (lux2 > 750)
+                [lux1] = check_rgbs([rgb1])
+                print(f'L1: {lux1}')
+                EDGE_DETECTED = (lux1 < 750)
 
                 #pixy logic
                 pixy.write_then_readinto(pixy_lib.get_blocks_cmd, read_buff)
@@ -102,5 +103,4 @@ if __name__ == "__main__":
                 time.sleep(1)
         finally:
             motor.write([ord('s')])
-            GP.cleanup()
             print('graceful exit')
