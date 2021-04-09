@@ -3,6 +3,8 @@
 
 #define I2C_SEC_ADDR 0x69
 
+#define SLEEP_PIN A0
+
 #define F_PWMA 5
 #define F_AIN2 1
 #define F_AIN1 0
@@ -39,6 +41,7 @@ char error_buffer[9];
 char received_command = 'x';
 char active_command = 'x';
 
+bool SLEEP_FLAG = false;
 bool ERROR_FLAG = false;
 bool DONE_FLAG = true;
 bool PROCESS_RECEIVE_FLAG = false;
@@ -56,13 +59,26 @@ void setup() {
 }
 
 void loop() {
-    if(PROCESS_RECEIVE_FLAG == true) {
-        do_command();
+    if(analogRead(SLEEP_PIN) < 300) {
+        if SLEEP_FLAG == false {
+            brake()
+        }
+        SLEEP_FLAG = true;
         PROCESS_RECEIVE_FLAG = false;
+        ERROR_FLAG = false;
+        DONE_FLAG = true;
+        active_command = 'x';
     }
 
-    if(ERROR_FLAG == true) {
-        brake();
+    if(SLEEP_FLAG == false) {
+        if(PROCESS_RECEIVE_FLAG == true) {
+            do_command();
+            PROCESS_RECEIVE_FLAG = false;
+        }
+
+        if(ERROR_FLAG == true) {
+            brake();
+        }
     }
 }
 
@@ -75,23 +91,29 @@ void receive_handler(int num_bytes) {
         i++;
     }
     receive_buffer[i] = '\0';
+
+    //set rxed cmd to first byte in buffer
     received_command = receive_buffer[0];
 
-    //service stop immediately
+    //service stop cmd immediately
     if(received_command == 'S') {
         brake();
         active_command = received_command;
         DONE_FLAG = true;
     }
+    //do nothing to service poll cmd
     else if(received_command == '.') {
         //do nothing
     }
+    //all other commands are serviced in the loop
     else {
+        //if i rx a cmd but am actively processing another, switch to error state
         if(PROCESS_RECEIVE_FLAG == true){
             PROCESS_RECEIVE_FLAG = false;
             ERROR_FLAG = true;
             strcpy(error_buffer,"!BUSY");
         }
+        //otherwise, set flag to handle in loop
         else {
             PROCESS_RECEIVE_FLAG = true;
         }
@@ -101,15 +123,22 @@ void receive_handler(int num_bytes) {
 void request_handler() {
     int i = 0;
 
+    //if in error state, send the error buffer
     if (ERROR_FLAG == true) {
         strcpy(send_buffer, error_buffer);
     }
+    //if in sleep state, send zzz's
+    else if(SLEEP_FLAG == true) {
+        strcpy(send_buffer, 'ZZZ')
+    }
+    //else return info about the current cmd
     else {
         send_buffer[0] = active_command;
         send_buffer[1] = DONE_FLAG?'D':'W';
         send_buffer[2] = '\0';
     }
 
+    //write the bytes in the send buffer
     while(send_buffer[i] != '\0') {
         Wire.write(send_buffer[i]);
         i++;
