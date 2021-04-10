@@ -7,8 +7,8 @@ import adafruit_tca9548a
 import adafruit_tcs34725
 from adafruit_bus_device.i2c_device import I2CDevice
 
-import modules.ultrasonic_gpio as us_lib
 import modules.pixy_smbus as pixy_lib
+import modules.motor_smbus as motor_lib
 
 #i2c addressses
 MOTOR_CTRL_ADDR = 0x69
@@ -38,6 +38,7 @@ if __name__ == "__main__":
         # us_lib.setup_ultrasonic_system([LEFT_ULTRASONIC_PAIR, RIGHT_ULTRASONIC_PAIR])
 
         read_buff = bytearray(MAX_I2C_MSG_BYTES)
+        motor_cmd = motor_lib.POLL_CMD
 
         pixy_ts = time.time()
 
@@ -48,10 +49,11 @@ if __name__ == "__main__":
                 #rgb logic
                 [lux1] = check_rgbs([rgb1])
                 print(f'L1: {lux1}')
-                EDGE_DETECTED = (lux1 < 750)
+                EDGE_DETECTED = (lux1 > 2000)
 
                 #pixy logic
-                pixy.write_then_readinto(pixy_lib.get_blocks_cmd, read_buff)
+                with pixy:
+                    pixy.write_then_readinto(pixy_lib.get_blocks_cmd, read_buff)
                 block_msg = pixy_lib.GetBlocksMsg(read_buff)
                 if block_msg.type_code == 33 and block_msg.payload_length > 0:
                     pixy_ts = time.time()
@@ -68,39 +70,36 @@ if __name__ == "__main__":
                 if time.time() > pixy_ts + 5.0:
                     TARGET_STATUS = 'NONE'
 
-                #motor logic
-                # motor.write_then_readinto([ord('.')], read_buff)
-                # curr_cmd = chr(read_buff[0])
-                # available = read_buff[1] == ord('D')
-                # if available:
-                #     if EDGE_DETECTED:
-                #         motor.write([ord('S')])
-                #     else:
-                #         motor.write([ord('F')])
+                ##
+                # Motor Logic
                 if TARGET_STATUS == 'LOCKED':
-                    motor.write([ord('S')])
+                    motor_cmd = motor_lib.STOP_CMD
                     print("I: Motor Logic has achieved objective")
                 elif TARGET_STATUS == 'CENTERED' and not EDGE_DETECTED:
-                    motor.write([ord('F')])
+                    motor_cmd = motor_lib.FORWARD_CMD
                 elif TARGET_STATUS == 'RANGED':
                     if x_state == ord('R'):
-                        motor.write([ord('R')])
+                        motor_cmd = motor_lib.RIGHT_CMD
                     elif x_state == ord('L'):
-                        motor.write([ord('L')])
+                        motor_cmd = motor_lib.LEFT_CMD
                     else:
                         print('E: bad in-range logic')
                 elif TARGET_STATUS == 'SIGHTED':
                     if x_state == ord('R'):
-                        motor.write([ord('R')])
+                        motor_cmd = motor_lib.RIGHT_CMD
                     elif x_state == ord('L'):
-                        motor.write([ord('F')])
+                        motor_cmd = motor_lib.LEFT_CMD
                     else:
                         print('E: bad in-sight logic')
                 else:
-                    motor.write([ord('S')])
+                    motor_cmd = motor_lib.STOP_CMD
                     print('I: Nothing to see here')
 
-                time.sleep(1)
+                with motor:
+                    motor.write(motor_cmd)
+
+                time.sleep(0.5)
         finally:
-            motor.write([ord('s')])
+            with motor:
+                motor.write(motor_lib.STOP_CMD)
             print('graceful exit')
