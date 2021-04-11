@@ -32,13 +32,13 @@ Motor fr_motor = Motor(F_BIN1, F_BIN2, F_PWMB, F_OFFSETB, F_STBY);
 Motor bl_motor = Motor(B_AIN1, B_AIN2, B_PWMA, B_OFFSETA, B_STBY);
 Motor br_motor = Motor(B_BIN1, B_BIN2, B_PWMB, B_OFFSETB, B_STBY);
 
-const int MOTOR_DUTY = 50;
+int motor_pwm;
 
 char receive_buffer[9];
 char send_buffer[9];
 char error_buffer[9];
 
-char received_command = 'x';
+char command_code = 'x';
 char active_command = 'x';
 
 bool SLEEP_FLAG = false;
@@ -52,6 +52,9 @@ void setup() {
     send_buffer[0] = '\0';
     error_buffer[0] = '\0';
 
+    //set default speed at 50%
+    motor_pwm = 127;
+
     //start listening for I2C
     Wire.begin(I2C_SEC_ADDR);
     Wire.onReceive(receive_handler);
@@ -59,25 +62,29 @@ void setup() {
 }
 
 void loop() {
-    if(analogRead(SLEEP_PIN) < 300) {
-        if SLEEP_FLAG == false {
-            brake()
+    if(analogRead(SLEEP_PIN) < 256) {
+        if(SLEEP_FLAG == false) {
+            brake_all();
         }
         SLEEP_FLAG = true;
         PROCESS_RECEIVE_FLAG = false;
         ERROR_FLAG = false;
         DONE_FLAG = true;
         active_command = 'x';
+    } else {
+        SLEEP_FLAG = false;
     }
 
     if(SLEEP_FLAG == false) {
         if(PROCESS_RECEIVE_FLAG == true) {
+            active_command = command_code;
             do_command();
             PROCESS_RECEIVE_FLAG = false;
+            DONE_FLAG = true;
         }
 
         if(ERROR_FLAG == true) {
-            brake();
+            brake_all();
         }
     }
 }
@@ -93,16 +100,16 @@ void receive_handler(int num_bytes) {
     receive_buffer[i] = '\0';
 
     //set rxed cmd to first byte in buffer
-    received_command = receive_buffer[0];
+    command_code = receive_buffer[0];
 
     //service stop cmd immediately
-    if(received_command == 'S') {
-        brake();
-        active_command = received_command;
+    if(command_code == 'S') {
+        brake_all();
+        active_command = command_code;
         DONE_FLAG = true;
     }
     //do nothing to service poll cmd
-    else if(received_command == '.') {
+    else if(command_code == '.') {
         //do nothing
     }
     //all other commands are serviced in the loop
@@ -129,7 +136,7 @@ void request_handler() {
     }
     //if in sleep state, send zzz's
     else if(SLEEP_FLAG == true) {
-        strcpy(send_buffer, 'ZZZ')
+        strcpy(send_buffer, "ZZZ");
     }
     //else return info about the current cmd
     else {
@@ -146,28 +153,125 @@ void request_handler() {
 }
 
 void do_command() {
-    if(received_command == 'F') {
-        active_command = received_command;
-        drive_forward(MOTOR_DUTY);
-        DONE_FLAG = true;
-    }
-    else if(received_command == 'L') {
-        active_command = received_command;
-        rotate_left(MOTOR_DUTY);
-        DONE_FLAG = true;
-    }
-    else if(received_command == 'R') {
-        active_command = received_command;
-        rotate_right(MOTOR_DUTY);
-        DONE_FLAG = true;
-    }
-    else if(received_command == 'E') {
-        active_command = received_command;
+    switch(command_code) {
+    //Forward CMD
+    case 'F':
+        drive_forward(motor_pwm);
+        break;
+
+    //Backward CMD
+    case 'B':
+        drive_backward(motor_pwm);
+        break;
+
+    //Rotate CMDs
+    case 'R':
+        //Front/back
+        switch(receive_buffer[1]) {
+        case 'F':
+            //Left/right
+            switch(receive_buffer[2]) {
+            case 'L':
+                rotate_about_fl(motor_pwm);
+                break;
+            case 'R':
+                rotate_about_fr(motor_pwm);
+                break;
+            default:
+                ERROR_FLAG = true;
+                break;
+            }
+            break;
+        case 'B':
+            //Left/right
+            switch(receive_buffer[2]){
+            case 'L':
+                rotate_about_bl(motor_pwm);
+                break;
+            case 'R':
+                rotate_about_br(motor_pwm);
+                break;
+            default:
+                ERROR_FLAG = true;
+                break;
+            }
+            break;
+        default:
+            ERROR_FLAG = true;
+            break;
+        }
+        break;
+
+    //Translate CMDs
+    case 'T':
+        //Left/right
+        switch(receive_buffer[1]){
+        case 'L':
+            translate_left(motor_pwm);
+            break;
+        case 'R':
+            translate_right(motor_pwm);
+            break;
+        default:
+            ERROR_FLAG = true;
+            break;
+        }
+        break;
+
+    //Diagonal CMDs
+    case 'D':
+        //Front/back
+        switch(receive_buffer[1]) {
+        case 'F':
+            //Left/right
+            switch(receive_buffer[2]){
+            case 'L':
+                diagonal_over_fl(motor_pwm);
+                break;
+            case 'R':
+                diagonal_over_fr(motor_pwm);
+                break;
+            default:
+                ERROR_FLAG = true;
+                break;
+            }
+            break;
+        case 'B':
+            //Left/right
+            switch(receive_buffer[2]){
+            case 'L':
+                diagonal_over_bl(motor_pwm);
+                break;
+            case 'R':
+                diagonal_over_br(motor_pwm);
+                break;
+            default:
+                ERROR_FLAG = true;
+                break;
+            }
+        default:
+            ERROR_FLAG = true;
+            break;
+        }
+        break;
+
+    //Program CMD
+    case 'P':
+        brake_all();
+        motor_pwm = receive_buffer[1]&0xff;
+        break;
+
+    //Error Reset CMD
+    case 'E':
         ERROR_FLAG = false;
-        DONE_FLAG = true;
-    }
-    else {
+        break;
+
+    //BAD CMD!
+    default:
         ERROR_FLAG = true;
+    }
+
+    if(ERROR_FLAG) {
         strcpy(error_buffer,"!BADCMD");
     }
 }
@@ -176,109 +280,95 @@ void demo_action() {
     for(int i=0; i<4; i++){
         drive_forward(100);
         delay(500);
-        brake();
+        brake_all();
         delay(500);
         drive_backward(100);
         delay(500);
-        brake();
+        brake_all();
         delay(500);
     }
 }
 
-void start_single_motor(int motor_id, int dir, int pwm) {
-    switch(motor_id) {
-        case 0: // fl
-            fl_motor.drive(pwm*dir);
-            break;
-        case 1: // fr
-            fr_motor.drive(pwm*dir);
-            break;
-        case 2: // bl
-            bl_motor.drive(pwm*dir);
-            break;
-        case 3: // br
-            br_motor.drive(pwm*dir);
-            break;
-        default:
-            //do nothing
-            break;
-    }
+void drive_forward(int pwm) {
+    set_motors(pwm,pwm,pwm,pwm);
 }
 
-void stop_single_motor(int motor_id) {
-    switch(motor_id) {
-        case 0: // fl
-            fl_motor.brake();
-            break;
-        case 1: // fr
-            fr_motor.brake();
-            break;
-        case 2: // bl
-            bl_motor.brake();
-            break;
-        case 3: // br
-            br_motor.brake();
-            break;
-        default:
-            //do nothing
-            break;
-    }
+void drive_backward(int pwm) {
+    set_motors(-pwm,-pwm,-pwm,-pwm);
 }
 
-void drive_forward(int duty) {
-  int pwm = map(duty,0,100,0,255);
-  forward(fl_motor,fr_motor,pwm);
-  forward(bl_motor,br_motor,pwm);
-}
-
-void drive_backward(int duty) {
-  int pwm = map(duty,0,100,0,255);
-  back(fl_motor,fr_motor,pwm);
-  back(bl_motor,br_motor,pwm);
-}
-
-void brake() {
+void brake_all() {
   brake(fl_motor,fr_motor);
   brake(bl_motor,br_motor);
 }
 
-void translate_right(int duty) {
-    int pwm = map(duty,0,100,0,255);
-    fl_motor.drive(pwm);
-    fr_motor.drive(-pwm);
-    bl_motor.drive(-pwm);
-    br_motor.drive(pwm);
+void translate_left(int pwm) {
+    set_motors(-pwm,pwm,pwm,-pwm);
 }
 
-void translate_left(int duty) {
-    int pwm = map(duty,0,100,0,255);
-    fl_motor.drive(-pwm);
-    fr_motor.drive(pwm);
-    bl_motor.drive(pwm);
-    br_motor.drive(-pwm);
+void translate_right(int pwm) {
+    set_motors(pwm,-pwm,-pwm,pwm);
 }
 
-// diagonal nw: [1,0,0,1]
-// diagonal sw: [0,-1,-1,0]
-// diagonal se: [-1,0,0,-1]
-// diagonal ne: [0,1,1,0]
-
-// rotate about center cw: [1,-1,1,-1] or ccw: [-1,1,-1,1]
-// rotate about back center cw: [1,-1,0,0]
-// totate about br wheel cw: [1,0,1,0]
-
-void rotate_left(int duty) {
-    int pwm = map(duty,0,100,0,255);
-    fl_motor.drive(-pwm);
-    fr_motor.drive(pwm);
-    bl_motor.drive(-pwm);
-    br_motor.drive(pwm);
+void diagonal_over_fl(int pwm) {
+    set_motors(0,pwm,pwm,0);
 }
 
-void rotate_right(int duty) {
-    int pwm = map(duty,0,100,0,255);
-    fl_motor.drive(pwm);
-    fr_motor.drive(-pwm);
-    bl_motor.drive(pwm);
-    br_motor.drive(-pwm);
+void diagonal_over_fr(int pwm) {
+    set_motors(pwm,0,0,pwm);
+}
+
+void diagonal_over_bl(int pwm) {
+    set_motors(-pwm,0,0,-pwm);
+}
+
+void diagonal_over_br(int pwm) {
+    set_motors(0,-pwm,-pwm,0);
+}
+
+void rotate_left(int pwm) {
+    set_motors(-pwm,pwm,-pwm,pwm);
+}
+
+void rotate_right(int pwm) {
+    set_motors(pwm,-pwm,pwm,-pwm);
+}
+
+void rotate_about_fl(int pwm) {
+    set_motors(0,-pwm,0,-pwm);
+}
+
+void rotate_about_fr(int pwm) {
+    set_motors(-pwm,0,-pwm,0);
+}
+
+void rotate_about_bl(int pwm) {
+    set_motors(0,pwm,0,pwm);
+}
+
+void rotate_about_br(int pwm) {
+    set_motors(pwm,0,pwm,0);
+}
+
+void set_motors(int fl_pwm, int fr_pwm, int bl_pwm, int br_pwm) {
+    if(fl_pwm == 0) {
+        fl_motor.brake();
+    } else {
+        fl_motor.drive(fl_pwm);
+    }
+    if(fr_pwm == 0) {
+        fr_motor.brake();
+    } else {
+        fr_motor.drive(fr_pwm);
+    }
+    if(bl_pwm == 0) {
+        bl_motor.brake();
+    } else {
+        bl_motor.drive(bl_pwm);
+    }
+    if(br_pwm == 0) {
+        br_motor.brake();
+    } else {
+        br_motor.drive(br_pwm);
+    }
 }
