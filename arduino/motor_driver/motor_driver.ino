@@ -65,8 +65,7 @@ void setup() {
 }
 
 void loop() {
-    // if(analogRead(SLEEP_PIN) < 256) {
-    if(false) {
+    if(analogRead(SLEEP_PIN) < 256) {
         if(SLEEP_FLAG == false) {
             brake_all();
         }
