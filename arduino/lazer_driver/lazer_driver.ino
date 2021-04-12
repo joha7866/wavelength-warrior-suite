@@ -3,16 +3,18 @@
 #define SECONDARY_ADDR 0x53
 #define POP_PIN 4
 #define TARGET_PIN 3
+int DANGER_LAZER = 12;
+int TARG_LAZER = 11;
 
 char receive_buffer[32];
 bool POP_FLAG = false;
 
 void setup() {
   receive_buffer[0] = '\0';
-  pinMode(4, OUTPUT);
-  pinMode(3, OUTPUT);
-  digitalWrite(4, LOW);
-  digitalWrite(3, LOW);
+  pinMode(DANGER_LAZER, OUTPUT);
+  pinMode(TARG_LAZER, OUTPUT);
+  digitalWrite(DANGER_LAZER, LOW);
+  digitalWrite(TARG_LAZER, LOW);
   Wire.begin(SECONDARY_ADDR);
   Wire.onReceive(receive_handler);
   Wire.onRequest(send_handler);
@@ -20,12 +22,12 @@ void setup() {
 
 void loop() {
   if (POP_FLAG) {
-    digitalWrite(3, HIGH);
+    digitalWrite(TARG_LAZER, HIGH);
     delay(5000);
-    digitalWrite(4, HIGH);
+    digitalWrite(DANGER_LAZER, HIGH);
     delay(5000);
-    digitalWrite(4, LOW);
-    digitalWrite(3, LOW);
+    digitalWrite(DANGER_LAZER, LOW);
+    digitalWrite(TARG_LAZER, LOW);
     POP_FLAG = false;
   }
 }
