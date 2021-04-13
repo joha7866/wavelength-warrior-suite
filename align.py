@@ -47,20 +47,79 @@ if __name__ == "__main__":
                 #     print(f'Lux L:{lux_l:.1f}, R:{lux_r:.1f}')
 
                 #apply motor logic
-                if not left_edge and not right_edge:
-                    with motor:
-                        motor.write_then_readinto(motor_lib.FORWARD_CMD, read_buff)
-                elif left_edge and not right_edge:
-                    with motor:
-                        motor.write_then_readinto(motor_lib.ROT_L_CMD, read_buff)
-                elif not left_edge and right_edge:
-                    with motor:
-                        motor.write_then_readinto(motor_lib.ROT_R_CMD, read_buff)
-                elif left_edge and right_edge:
+                if left_edge and right_edge:
                     with motor:
                         motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
-                    print('Mission Accomplished!!')
-                    time.sleep(5)
+                    STATE = 'DONE'
+                if STATE == 'TRAVELLING':
+                    if not left_edge and not right_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.FORWARD_CMD, read_buff)
+                    else:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                        STATE = 'BACKING'
+                elif STATE == 'BACKING':
+                    if left_edge:
+                        #Diag over BR burst
+                        with motor:
+                            motor.write_then_readinto(motor_lib.DIAG_BR_CMD, read_buff)
+                        time.sleep(0.5)
+                        #Rot about BL until edge event
+                        with motor:
+                            motor.write_then_readinto(motor_lib.ROT_BL_CMD, read_buff)
+                        STATE = 'CHECKING_LEFT'
+                    elif right_edge:
+                        #diag over BL burst
+                        with motor:
+                            motor.write_then_readinto(motor_lib.DIAG_BL_CMD, read_buff)
+                        time.sleep(0.5)
+                        #Rot about BR until edge event
+                        with motor:
+                            motor.write_then_readinto(motor_lib.ROT_BR_CMD, read_buff)
+                        STATE = 'CHECKING_RIGHT'
+                    else:
+                        STATE = 'ERROR'
+                elif STATE == 'CHECKING_LEFT':
+                    if left_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                        STATE = 'BACKING'
+                    elif right_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                        STATE = 'ALIGNING'
+                elif STATE == 'CHECKING_RIGHT':
+                    if left_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                        STATE = 'ALIGNING'
+                    elif right_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                        STATE = 'BACKING'
+                elif STATE == 'ALIGNING':
+                    if left_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.ROT_L_CMD, read_buff)
+                    elif right_edge:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.ROT_R_CMD, read_buff)
+                    else:
+                        with motor:
+                            motor.write_then_readinto(motor_lib.FORWARD_CMD, read_buff)
+                elif STATE == 'DONE':
+                    print('Mission accomplished!')
+                    time.sleep(30)
+                else:
+                    print('!Bad State Logic')
+                    time.sleep(30)
+
+                if STATE == 'ERROR':
+                    with motor:
+                            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+                    print('!Hit Error State')
+                    time.sleep(30)
 
                 loop_count += 1
     except KeyboardInterrupt:
