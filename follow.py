@@ -29,16 +29,16 @@ if __name__ == "__main__":
     with busio.I2C(board.SCL, board.SDA) as bus:
 
         mux = adafruit_tca9548a.TCA9548A(bus)
-        rgb1 = adafruit_tcs34725.TCS34725(mux[2])
+        rgb_left = adafruit_tcs34725.TCS34725(mux[5])
+        rgb_right = adafruit_tcs34725.TCS34725(mux[7])
 
-        motor = I2CDevice(mux[0], MOTOR_CTRL_ADDR)
-        # laser = I2CDevice(mux[1], 0x18)
-        pixy = I2CDevice(mux[7], PIXY_ADDR)
+        motor = I2CDevice(mux[0], MOTOR_CTRL_ADDR, probe=False)
+        laser = I2CDevice(mux[3], 0x53, probe=False)
+        pixy = I2CDevice(mux[4], PIXY_ADDR)
 
         # us_lib.setup_ultrasonic_system([LEFT_ULTRASONIC_PAIR, RIGHT_ULTRASONIC_PAIR])
 
-        read_buff = bytearray(MAX_I2C_MSG_BYTES)
-        motor_cmd = motor_lib.POLL_CMD
+        read_buff = bytearray(16)
 
         pixy_ts = time.time()
 
@@ -47,13 +47,15 @@ if __name__ == "__main__":
         try:
             while True:
                 #rgb logic
-                [lux1] = check_rgbs([rgb1])
-                print(f'L1: {lux1}')
-                EDGE_DETECTED = (lux1 > 2000)
+                lux_l = rgb_left.lux
+                lux_r = rgb_right.lux
+                left_edge = (lux_l > 800)
+                right_edge = (lux_r > 800)
+                EDGE_DETECTED = left_edge or right_edge
 
                 #pixy logic
                 with pixy:
-                    pixy.write_then_readinto(pixy_lib.get_blocks_cmd, read_buff)
+                    pixy.write_then_readinto(bytearray(pixy_lib.get_blocks_cmd), read_buff)
                 block_msg = pixy_lib.GetBlocksMsg(read_buff)
                 if block_msg.type_code == 33 and block_msg.payload_length > 0:
                     pixy_ts = time.time()
@@ -79,26 +81,27 @@ if __name__ == "__main__":
                     motor_cmd = motor_lib.FORWARD_CMD
                 elif TARGET_STATUS == 'RANGED':
                     if x_state == ord('R'):
-                        motor_cmd = motor_lib.RIGHT_CMD
+                        motor_cmd = motor_lib.ROT_R_CMD
                     elif x_state == ord('L'):
-                        motor_cmd = motor_lib.LEFT_CMD
+                        motor_cmd = motor_lib.ROT_L_CMD
                     else:
                         print('E: bad in-range logic')
                 elif TARGET_STATUS == 'SIGHTED':
                     if x_state == ord('R'):
-                        motor_cmd = motor_lib.RIGHT_CMD
+                        motor_cmd = motor_lib.ROT_R_CMD
                     elif x_state == ord('L'):
-                        motor_cmd = motor_lib.LEFT_CMD
+                        motor_cmd = motor_lib.ROT_L_CMD
                     else:
                         print('E: bad in-sight logic')
                 else:
-                    motor_cmd = motor_lib.STOP_CMD
-                    print('I: Nothing to see here')
+                    motor_cmd = motor_lib.ROT_R_CMD
 
                 with motor:
-                    motor.write(motor_cmd)
+                    motor.write_then_readinto(motor_cmd, read_buff)
 
-                time.sleep(0.5)
+                print(f'{TARGET_STATUS}')
+                time.sleep(0.3)
+
         finally:
             with motor:
                 motor.write(motor_lib.STOP_CMD)
