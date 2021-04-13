@@ -10,7 +10,7 @@ MOTOR_CTRL_ADDR = 0x69
 
 #motor info
 FORWARD_CMD = bytearray([ord('F')])
-BACKWARD_CMD = bytearray([ord('F')])
+BACKWARD_CMD = bytearray([ord('B')])
 ROT_L_CMD = bytearray([ord(ch) for ch in 'RL'])
 ROT_R_CMD = bytearray([ord(ch) for ch in 'RR'])
 ROT_FL_CMD = bytearray([ord(ch) for ch in 'RFL'])
