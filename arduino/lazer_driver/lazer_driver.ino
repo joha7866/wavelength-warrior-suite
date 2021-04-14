@@ -1,52 +1,96 @@
 #include <Wire.h>
 
 #define SECONDARY_ADDR 0x53
-#define POP_PIN 4
-#define TARGET_PIN 3
+#define DANGER_LAZER 12
+#define TARG_LAZER 11
 
-char receive_buffer[32];
-bool POP_FLAG = false;
+const int PREFIRE_DELAY = 5000; //5s
+const int FIRE_DURATION = 5000; //5s
+
+char receive_buffer[16];
+unsigned long cmd_ts;
+bool GOOD_TO_GO;
+char active_cmd;
 
 void setup() {
-  receive_buffer[0] = '\0';
-  pinMode(4, OUTPUT);
-  pinMode(3, OUTPUT);
-  digitalWrite(4, LOW);
-  digitalWrite(3, LOW);
-  Wire.begin(SECONDARY_ADDR);
-  Wire.onReceive(receive_handler);
-  Wire.onRequest(send_handler);
+    receive_buffer[0] = '\0';
+    GOOD_TO_GO = false;
+    cmd_ts = 0;
+    active_cmd = '\0';
+
+    pinMode(DANGER_LAZER, OUTPUT);
+    pinMode(TARG_LAZER, OUTPUT);
+    digitalWrite(DANGER_LAZER, LOW);
+    digitalWrite(TARG_LAZER, LOW);
+
+    Wire.begin(SECONDARY_ADDR);
+    Wire.onReceive(receive_handler);
+    Wire.onRequest(request_handler);
 }
 
 void loop() {
-  if (POP_FLAG) {
-    digitalWrite(3, HIGH);
-    delay(5000);
-    digitalWrite(4, HIGH);
-    delay(5000);
-    digitalWrite(4, LOW);
-    digitalWrite(3, LOW);
-    POP_FLAG = false;
-  }
+    if(GOOD_TO_GO) {
+        switch(active_cmd) {
+        case 'P':
+            if(millis() < cmd_ts + PREFIRE_DELAY) {
+                digitalWrite(TARG_LAZER, HIGH);
+                digitalWrite(DANGER_LAZER, LOW);
+            } else if(millis() < cmd_ts + PREFIRE_DELAY + FIRE_DURATION) {
+                digitalWrite(TARG_LAZER, HIGH);
+                digitalWrite(DANGER_LAZER, HIGH);
+            } else {
+                digitalWrite(TARG_LAZER, LOW);
+                digitalWrite(DANGER_LAZER, LOW);
+                GOOD_TO_GO = false;
+                cmd_ts = 0;
+                active_cmd = '\0';
+            }
+            break;
+        case 'T':
+            if(millis() < cmd_ts + PREFIRE_DELAY) {
+                digitalWrite(TARG_LAZER, HIGH);
+                digitalWrite(DANGER_LAZER, LOW);
+            } else if(millis() < cmd_ts + PREFIRE_DELAY + FIRE_DURATION){
+                digitalWrite(TARG_LAZER, HIGH);
+                digitalWrite(DANGER_LAZER, LOW);
+            } else {
+                digitalWrite(TARG_LAZER, LOW);
+                digitalWrite(DANGER_LAZER, LOW);
+                GOOD_TO_GO = false;
+                cmd_ts = 0;
+                active_cmd = '\0';
+            }
+            break;
+        default:
+            break;
+        }
+    } else {
+        digitalWrite(TARG_LAZER, LOW);
+        digitalWrite(DANGER_LAZER, LOW);
+    }
 }
 
-void receive_handler(int how_many)
-{
-  int i = 0;
-  while(Wire.available() && i<31)
-  {
-    receive_buffer[i] = Wire.read();
-    i++;
-  }
-  
-  receive_buffer[i] = '\0';
+////
+// 'P' is pop
+// 'T' is test
+// all other bytes will cancel
+void receive_handler(int how_many) {
+    int i = 0;
+    while(Wire.available() && i < 16) {
+        receive_buffer[i] = Wire.read();
+        i++;
+    }
+    receive_buffer[i] = '\0';
 
-  if(!strcmp(receive_buffer, "POPseq") && POP_FLAG == false) {
-    POP_FLAG = true;
-  }
+    active_cmd = receive_buffer[0];
+    cmd_ts = millis();
+    if(active_cmd == 'P' || active_cmd == 'T') {
+        GOOD_TO_GO = true;
+    } else {
+        GOOD_TO_GO = false;
+    }
 }
 
-void send_handler()
-{
-  Wire.write(0x61);
+void request_handler() {
+    Wire.write(active_cmd);
 }
