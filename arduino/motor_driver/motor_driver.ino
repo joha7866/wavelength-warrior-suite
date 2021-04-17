@@ -266,6 +266,7 @@ void do_command() {
                 ERROR_FLAG = true;
                 break;
             }
+            break;
         default:
             ERROR_FLAG = true;
             break;
