@@ -3,6 +3,7 @@
 #define SECONDARY_ADDR 0x53
 #define DANGER_LAZER 12
 #define TARG_LAZER 11
+#define SLEEP_PIN 9
 
 const int PREFIRE_DELAY = 5000; //5s
 const int FIRE_DURATION = 5000; //5s
@@ -23,13 +24,15 @@ void setup() {
     digitalWrite(DANGER_LAZER, LOW);
     digitalWrite(TARG_LAZER, LOW);
 
+    pinMode(SLEEP_PIN, INPUT);
+
     Wire.begin(SECONDARY_ADDR);
     Wire.onReceive(receive_handler);
     Wire.onRequest(request_handler);
 }
 
 void loop() {
-    if(GOOD_TO_GO) {
+    if(GOOD_TO_GO && digitalRead(SLEEP_PIN) == HIGH ) {
         switch(active_cmd) {
         case 'P':
             if(millis() < cmd_ts + PREFIRE_DELAY) {
