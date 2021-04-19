@@ -35,8 +35,8 @@ if __name__ == "__main__":
 
         with busio.I2C(board.SCL, board.SDA) as bus:
             mux = adafruit_tca9548a.TCA9548A(bus)
-            rgb_left = adafruit_tcs34725.TCS34725(mux[5])
-            rgb_right = adafruit_tcs34725.TCS34725(mux[7])
+            rgb_left = adafruit_tcs34725.TCS34725(mux[7])
+            rgb_right = adafruit_tcs34725.TCS34725(mux[5])
             motor = I2CDevice(mux[0], MOTOR_CTRL_ADDR, probe=False)
 
             with motor:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
                 elif STATE == 'BACKING':
                     if left_edge:
                         #Diag over BR burst
-                        new_cmd = motor_lib.BACKWARD_CMD
+                        new_cmd = motor_lib.DIAG_BR_CMD
                         if active_cmd != new_cmd[0]:
                             with motor:
                                 motor.write_then_readinto(new_cmd, read_buff)
@@ -93,7 +93,7 @@ if __name__ == "__main__":
                         STATE = 'CHECK_LEFT'
                     elif right_edge:
                         #diag over BL burst
-                        new_cmd = motor_lib.BACKWARD_CMD
+                        new_cmd = motor_lib.DIAG_BL_CMD
                         if active_cmd != new_cmd[0]:
                             with motor:
                                 motor.write_then_readinto(new_cmd, read_buff)
