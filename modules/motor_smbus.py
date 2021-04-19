@@ -25,6 +25,9 @@ STOP_CMD = bytearray([ord('S')])
 ERROR_CMD = bytearray([ord('E')])
 POLL_CMD = bytearray([ord('.')])
 
+# ROT_90_DELAY = 1.33
+ROT_90_DELAY = 1.45
+
 if __name__ == "__main__":
     read_buff = bytearray(16)
     with busio.I2C(board.SCL, board.SDA) as bus:
