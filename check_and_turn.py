@@ -26,6 +26,8 @@ MAX_I2C_MSG_BYTES = 16
 LEFT_US_PIN_PAIR = [board.D19,board.D26]
 RIGHT_US_PIN_PAIR = [board.D16,board.D20]
 
+CLOSE_DIST_CM = 50.0
+
 if __name__ == "__main__":
     #setup
     left_us = adafruit_hcsr04.HCSR04(trigger_pin=LEFT_US_PIN_PAIR[0], echo_pin=LEFT_US_PIN_PAIR[1])
@@ -42,17 +44,6 @@ if __name__ == "__main__":
 
 
         while 1:
-            # #us info
-            # try:
-            #     left_dist = left_us.distance
-            # except RuntimeError:
-            #     left_dist = -1.0
-            # try:
-            #     right_dist = right_us.distance
-            # except RuntimeError:
-            #     right_dist = -1.0
-            # print(f'Dist L:{left_dist:.1f}, R:{right_dist:.1f}')
-
             #burst back
             with motor:
                 motor.write_then_readinto(motor_lib.BACKWARD_CMD, read_buff)
@@ -60,11 +51,37 @@ if __name__ == "__main__":
             with motor:
                 motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
 
+            #check sides
+            try:
+                left_dist = left_us.distance
+            except RuntimeError:
+                left_dist = -1.0
+            try:
+                right_dist = right_us.distance
+            except RuntimeError:
+                right_dist = -1.0
+
+            BOTH_BAD = (left_dist<0 and right_dist<0)
+            BOTH_SHORT = (left_dist<CLOSE_DIST_CM and right_dist<CLOSE_DIST_CM)
+            LEFT_LONG = (left_dist>=CLOSE_DIST_CM and right_dist<CLOSE_DIST_CM)
+            RIGHT_LONG = (left_dist>=CLOSE_DIST_CM and right_dist<CLOSE_DIST_CM)
+            if BOTH_BAD or BOTH_SHORT:
+                cmd = motor_lib.ROT_L_CMD
+                dur = 2*motor_lib.ROT_90_DELAY
+            elif LEFT_LONG:
+                cmd = motor_lib.ROT_L_CMD
+                dur = motor_lib.ROT_90_DELAY
+            elif RIGHT_LONG:
+                cmd = motor_lib.ROT_R_CMD
+                dur = motor_lib.ROT_90_DELAY
+            else:
+                print('both long')
+                sys.exit()
+
             #rotate 90
             with motor:
-                motor.write_then_readinto(motor_lib.ROT_R_CMD, read_buff)
-            time.sleep(1.33)
+                motor.write_then_readinto(cmd, read_buff)
+            time.sleep(dur)
             with motor:
                 motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
             sys.exit()
-            time.sleep(2)
