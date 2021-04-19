@@ -5,26 +5,26 @@
 
 #define SLEEP_PIN A0
 
-#define F_PWMA 5
-#define F_AIN2 1
-#define F_AIN1 0
+#define F_PWMA 6
+#define F_AIN2 4
+#define F_AIN1 3
 #define F_STBY 2
-#define F_BIN1 3
-#define F_BIN2 4
-#define F_PWMB 6
+#define F_BIN1 0
+#define F_BIN2 1
+#define F_PWMB 5
 
-#define B_PWMA 10
-#define B_AIN2 8
-#define B_AIN1 7
+#define B_PWMA 11
+#define B_AIN2 13
+#define B_AIN1 12
 #define B_STBY 9
-#define B_BIN1 12
-#define B_BIN2 13
-#define B_PWMB 11
+#define B_BIN1 7
+#define B_BIN2 8
+#define B_PWMB 10
 
 const int F_OFFSETA = 1;
 const int F_OFFSETB = 1;
 const int B_OFFSETA = 1;
-const int B_OFFSETB = 1;
+const int B_OFFSETB = -1;
 
 Motor fl_motor = Motor(F_AIN1, F_AIN2, F_PWMA, F_OFFSETA, F_STBY);
 Motor fr_motor = Motor(F_BIN1, F_BIN2, F_PWMB, F_OFFSETB, F_STBY);
@@ -38,8 +38,10 @@ char receive_buffer[9];
 char send_buffer[9];
 char error_buffer[9];
 
+char cmd_direction[4];
 char command_code = 'x';
 char active_command = 'x';
+char input_pwm = '\0';
 
 bool SLEEP_FLAG = false;
 bool ERROR_FLAG = false;
@@ -51,6 +53,7 @@ void setup() {
     receive_buffer[0] = '\0';
     send_buffer[0] = '\0';
     error_buffer[0] = '\0';
+    cmd_direction[0] = '\0';
 
     //set default speed at 50%
     motor_pwm = 127;
@@ -101,6 +104,14 @@ void receive_handler(int num_bytes) {
 
     //set rxed cmd to first byte in buffer
     command_code = receive_buffer[0];
+    if(command_code == 'R'||command_code == 'T'||command_code == 'D') {
+        cmd_direction[0] = receive_buffer[1];
+        cmd_direction[1] = receive_buffer[2];
+        cmd_direction[2] = receive_buffer[3];
+    }
+    else if(command_code == 'P') {
+        input_pwm = receive_buffer[1];
+    }
 
     //service stop cmd immediately
     if(command_code == 'S') {
@@ -167,10 +178,16 @@ void do_command() {
     //Rotate CMDs
     case 'R':
         //Front/back
-        switch(receive_buffer[1]) {
+        switch(cmd_direction[0]) {
+        case 'L':
+            rotate_left(motor_pwm);
+            break;
+        case 'R':
+            rotate_right(motor_pwm);
+            break;
         case 'F':
             //Left/right
-            switch(receive_buffer[2]) {
+            switch(cmd_direction[1]) {
             case 'L':
                 rotate_about_fl(motor_pwm);
                 break;
@@ -184,7 +201,7 @@ void do_command() {
             break;
         case 'B':
             //Left/right
-            switch(receive_buffer[2]){
+            switch(cmd_direction[1]){
             case 'L':
                 rotate_about_bl(motor_pwm);
                 break;
@@ -205,7 +222,7 @@ void do_command() {
     //Translate CMDs
     case 'T':
         //Left/right
-        switch(receive_buffer[1]){
+        switch(cmd_direction[0]){
         case 'L':
             translate_left(motor_pwm);
             break;
@@ -221,10 +238,10 @@ void do_command() {
     //Diagonal CMDs
     case 'D':
         //Front/back
-        switch(receive_buffer[1]) {
+        switch(cmd_direction[0]) {
         case 'F':
             //Left/right
-            switch(receive_buffer[2]){
+            switch(cmd_direction[1]){
             case 'L':
                 diagonal_over_fl(motor_pwm);
                 break;
@@ -238,7 +255,7 @@ void do_command() {
             break;
         case 'B':
             //Left/right
-            switch(receive_buffer[2]){
+            switch(cmd_direction[1]){
             case 'L':
                 diagonal_over_bl(motor_pwm);
                 break;
@@ -249,6 +266,7 @@ void do_command() {
                 ERROR_FLAG = true;
                 break;
             }
+            break;
         default:
             ERROR_FLAG = true;
             break;
@@ -258,7 +276,7 @@ void do_command() {
     //Program CMD
     case 'P':
         brake_all();
-        motor_pwm = receive_buffer[1]&0xff;
+        motor_pwm = input_pwm&0xff;
         break;
 
     //Error Reset CMD
