@@ -5,19 +5,17 @@
 #define TARG_LAZER 11
 #define SLEEP_PIN 9
 
-const int PREFIRE_DELAY = 5000; //5s
-const int FIRE_DURATION = 5000; //5s
+const int PREFIRE_DELAY = 3000; //5s
+const int FIRE_DURATION = 1000; //5s
 
 char receive_buffer[16];
-unsigned long cmd_ts;
-bool GOOD_TO_GO;
-char active_cmd;
+unsigned long cmd_ts = 0;
+bool GOOD_TO_GO = false;
+bool SLEEP_FLAG = false;
+char active_cmd = '\0';
 
 void setup() {
     receive_buffer[0] = '\0';
-    GOOD_TO_GO = false;
-    cmd_ts = 0;
-    active_cmd = '\0';
 
     pinMode(DANGER_LAZER, OUTPUT);
     pinMode(TARG_LAZER, OUTPUT);
@@ -32,7 +30,16 @@ void setup() {
 }
 
 void loop() {
-    if(GOOD_TO_GO && digitalRead(SLEEP_PIN) == HIGH ) {
+    if(digitalRead(SLEEP_PIN) == LOW) {
+        GOOD_TO_GO = false;
+        cmd_ts = 0;
+        active_cmd = '\0';
+        SLEEP_FLAG = true;
+    } else {
+        SLEEP_FLAG = false;
+    }
+
+    if(GOOD_TO_GO == true && SLEEP_FLAG == false) {
         switch(active_cmd) {
         case 'P':
             if(millis() < cmd_ts + PREFIRE_DELAY) {
@@ -95,5 +102,10 @@ void receive_handler(int how_many) {
 }
 
 void request_handler() {
-    Wire.write(active_cmd);
+    if (SLEEP_FLAG == true) {
+        Wire.write('Z');
+    }
+    else {
+        Wire.write(active_cmd);
+    }
 }
