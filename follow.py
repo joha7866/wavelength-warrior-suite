@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import time
+import sys
 # import RPi.GPIO as GP #unnecessary with circuitpython?
 import board
 import busio
@@ -77,6 +78,7 @@ if __name__ == "__main__":
                 if TARGET_STATUS == 'LOCKED':
                     motor_cmd = motor_lib.STOP_CMD
                     print("I: Motor Logic has achieved objective")
+                    sys.exit()
                 elif TARGET_STATUS == 'CENTERED' and not EDGE_DETECTED:
                     motor_cmd = motor_lib.FORWARD_CMD
                 elif TARGET_STATUS == 'RANGED':
