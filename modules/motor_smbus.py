@@ -28,6 +28,24 @@ POLL_CMD = bytearray([ord('.')])
 # ROT_90_DELAY = 1.33
 ROT_90_DELAY = 1.45
 
+class MotorController(object):
+    def __init__(self, bus):
+        self.motor = I2CDevice(bus, MOTOR_CTRL_ADDR, probe=False)
+        self.active_cmd = 'x'
+
+    def send_cmd(self, cmd):
+        read_buff = bytearray(16)
+
+        with self.motor:
+            self.motor.write_then_readinto(cmd, read_buff)
+        self.active_cmd = read_buff[0]
+
+        if self.active_cmd == cmd[0]:
+            return 0
+        else
+            return self.active_cmd
+
+
 if __name__ == "__main__":
     read_buff = bytearray(16)
     with busio.I2C(board.SCL, board.SDA) as bus:
