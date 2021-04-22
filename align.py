@@ -45,10 +45,15 @@ if __name__ == "__main__":
 
             while 1:
                 #read rgbs
-                lux_l = rgb_left.lux
-                lux_r = rgb_right.lux
-                left_edge = lux_l>700
-                right_edge = lux_r>700
+                rl, gl, bl, cl = rgb_left.color_raw
+                rr, gr, br, cr = rgb_right.color_raw
+
+                left_purple = 50>=cl>17 and 25>=rl>8
+                right_purple = 50>=cr>17 and 25>=rr>8
+                left_yellow = cr>50 and rl>25
+                right_yellow = cr>50 and rr>25
+                left_edge = left_purple or left_yellow
+                right_edge = left_purple or left_yellow
                 # if loop_count%200 == 0:
                 #     print(f'Lux L:{lux_l:.1f}, R:{lux_r:.1f}')
                 #     print(f'State: {STATE}')

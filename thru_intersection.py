@@ -49,10 +49,10 @@ if __name__ == "__main__":
             rl, gl, bl, cl = rgb_left.color_raw
             rr, gr, br, cr = rgb_right.color_raw
 
-            left_purple = 50>=cl>20 and rl>20
-            right_purple = 50>=cr>20 and rr>20
-            left_yellow = cr>50
-            right_yellow = cr>50
+            left_purple = 50>=cl>17 and 25>=rl>8
+            right_purple = 50>=cr>17 and 25>=rr>8
+            left_yellow = cr>50 and rl>25
+            right_yellow = cr>50 and rr>25
 
             if left_yellow or right_yellow:
                 with motor:
