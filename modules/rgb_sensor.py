@@ -31,7 +31,7 @@ if __name__ == "__main__":
                 rr, gr, br, cr = rgb_right.color_raw
                 if loop_count%4 == 0:
                     print(f'Left:  R:{rl} G:{gl} B:{bl} C:{cl}')
-                    print(f'Right: R:{rl} G:{gl} B:{bl} C:{cl}')
+                    print(f'Right: R:{rr} G:{gr} B:{br} C:{cr}')
                 time.sleep(0.24)
                 loop_count += 1
     except KeyboardInterrupt:
