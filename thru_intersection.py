@@ -36,10 +36,6 @@ if __name__ == "__main__":
         rgb_right = adafruit_tcs34725.TCS34725(mux[7])
         motor = I2CDevice(mux[0], MOTOR_CTRL_ADDR, probe=False)
 
-        lux_l = rgb_left.lux
-        lux_r = rgb_right.lux
-        time.sleep(0.5)
-
         with motor:
             motor.write_then_readinto(motor_lib.FORWARD_CMD, read_buff)
         active_cmd = chr(read_buff[0])
