@@ -46,23 +46,19 @@ if __name__ == "__main__":
 
         while 1:
             #read rgbs
-            rl, gl, bl = rgb_left.color_rgb_bytes
-            lux_l = rgb_left.lux
-            rr, gr, br = rgb_right.color_rgb_bytes
-            lux_r = rgb_right.lux
+            rl, gl, bl, cl = rgb_left.color_raw
+            rr, gr, br, cr = rgb_right.color_raw
 
-            left_purple = 1200>=lux_l>400 and rl>30
-            right_purple = 1200>=lux_r>400 and rr>30
-            left_yellow = lux_l>1200
-            right_yellow = lux_r>1200
-            # if loop_count%200 == 0:
-            #     print(f'Lux L:{lux_l:.1f}, R:{lux_r:.1f}')
-            #     print(f'State: {STATE}')
+            left_purple = 50>=cl>20 and rl>20
+            right_purple = 50>=cr>20 and rr>20
+            left_yellow = cr>50
+            right_yellow = cr>50
+
             if left_yellow or right_yellow:
-                print('stopped on edge')
                 with motor:
                     motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
                 active_cmd = chr(read_buff[0])
+                print('stopped on edge')
                 sys.exit()
 
             if left_purple or right_purple:
@@ -71,5 +67,6 @@ if __name__ == "__main__":
                     with motor:
                         motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
                     active_cmd = chr(read_buff[0])
+                    print('thru')
                     sys.exit()
                 time.sleep(0.4)
