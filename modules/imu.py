@@ -6,7 +6,7 @@ import adafruit_tca9548a
 from adafruit_lsm6ds import lsm6dsox
 from adafruit_bus_device.i2c_device import I2CDevice
 
-import motor_smbus as motor_lib
+import modules.motor_smbus as motor_lib
 
 def eval_angle(imu, motor, input_angle):
     read_buff = bytearray(16)
@@ -19,8 +19,7 @@ def eval_angle(imu, motor, input_angle):
 
     angle_z = 0
     t1 = time.time()
-    while abs(angle_z)<abs(input_angle):
-        time.sleep(0.001)
+    while abs(angle_z)<abs(input_angle)-0.05:
         t2 = time.time()
         d_theta = imu.gyro[2]
         angle_z += d_theta*(t2-t1)
