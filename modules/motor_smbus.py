@@ -42,7 +42,7 @@ class MotorController(object):
 
         if self.active_cmd == cmd[0]:
             return 0
-        else
+        else:
             return self.active_cmd
 
 

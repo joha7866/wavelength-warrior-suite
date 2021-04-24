@@ -11,21 +11,18 @@ import modules.motor_smbus as motor_lib
 def eval_angle(imu, motor, input_angle):
     read_buff = bytearray(16)
     if input_angle < 0:
-        with motor:
-            motor.write_then_readinto(motor_lib.ROT_R_CMD, read_buff)
+         motor.send_cmd(motor_lib.ROT_R_CMD)
     else:
-        with motor:
-            motor.write_then_readinto(motor_lib.ROT_L_CMD, read_buff)
+         motor.send_cmd(motor_lib.ROT_L_CMD)
 
     angle_z = 0
     t1 = time.time()
-    while abs(angle_z)<abs(input_angle)-0.05:
+    while abs(angle_z)<abs(input_angle)-0.1:
         t2 = time.time()
         d_theta = imu.gyro[2]
         angle_z += d_theta*(t2-t1)
         t1 = t2
-    with motor:
-            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+    motor.send_cmd(motor_lib.STOP_CMD)
     return angle_z
 
 if __name__ == "__main__":

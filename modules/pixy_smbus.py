@@ -23,7 +23,7 @@ Y_LOWER = MAP_Y_LENGTH/2-MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 Y_UPPER = MAP_Y_LENGTH/2+MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 
 version_req_cmd = [0xae, 0xc1, 0x0e, 0x00]
-get_blocks_cmd = [0xae, 0xc1, 0x20, 0x02, USE_RED_SIGMAP, 0x01]
+get_blocks_cmd = [0xae, 0xc1, 0x20, 0x02, USE_BLUE_SIGMAP, 0x01]
 
 class I2cMsg:
     '''Generic I2cMsg class for parsing and access'''
