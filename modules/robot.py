@@ -14,6 +14,7 @@ from adafruit_bus_device.i2c_device import I2CDevice
 import modules.motor_smbus as motor_lib
 import modules.imu as imu_lib
 import modules.pixy_smbus as pixy_lib
+import modules.laser as laser_lib
 
 class Robot(object):
     def __init__(self, bus):
@@ -24,6 +25,7 @@ class Robot(object):
         self.rgb_left = adafruit_tcs34725.TCS34725(self.mux[7])
         self.rgb_right = adafruit_tcs34725.TCS34725(self.mux[5])
         self.motor = motor_lib.MotorController(self.mux[0])
+        self.laser = laser_lib.LaserController(self.mux[3])
         self.pixy = I2CDevice(self.mux[4], pixy_lib.PIXY_ADDR)
     
     def do_turn(self, dir='left', timeout=10):
@@ -212,7 +214,7 @@ class Robot(object):
             if TARGET_STATUS == 'LOCKED':
                 motor_cmd = motor_lib.STOP_CMD
                 print("I: Motor Logic has achieved objective")
-                sys.exit()
+                return
             elif TARGET_STATUS == 'CENTERED' and not EDGE_DETECTED:
                 motor_cmd = motor_lib.FORWARD_CMD
             elif TARGET_STATUS == 'RANGED':
@@ -237,6 +239,14 @@ class Robot(object):
 
             # print(f'{TARGET_STATUS}')
             time.sleep(0.1)
+    
+    def test_fire(self):
+        self.motor.send_cmd(motor_lib.STOP_CMD)
+        self.laser.send_cmd(bytearray([ord('T')]))
+        #while pixy sees balloon loop
+        #Then send c
+        time.sleep(4)
+        return
 
 if __name__ == '__main__':
     pass
