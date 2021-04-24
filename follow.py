@@ -41,6 +41,9 @@ if __name__ == "__main__":
 
         read_buff = bytearray(16)
 
+        with motor:
+                    motor.write_then_readinto(motor_lib.ROT_R_CMD, read_buff)
+
         pixy_ts = time.time()
 
         EDGE_DETECTED = False
@@ -48,11 +51,14 @@ if __name__ == "__main__":
         try:
             while True:
                 #rgb logic
-                lux_l = rgb_left.lux
-                lux_r = rgb_right.lux
-                left_edge = (lux_l > 800)
-                right_edge = (lux_r > 800)
-                EDGE_DETECTED = left_edge or right_edge
+                rl, gl, bl, cl = rgb_left.color_raw
+                rr, gr, br, cr = rgb_right.color_raw
+
+                left_purple = 50>=cl>17 and 25>=rl>8
+                right_purple = 50>=cr>17 and 25>=rr>8
+                left_yellow = cl>50 and rl>25
+                right_yellow = cr>50 and rr>25
+                EDGE_DETECTED = left_yellow or right_yellow
 
                 #pixy logic
                 with pixy:
@@ -87,7 +93,8 @@ if __name__ == "__main__":
                     elif x_state == ord('L'):
                         motor_cmd = motor_lib.ROT_L_CMD
                     else:
-                        print('E: bad in-range logic')
+                        # print('E: bad in-range logic')
+                        pass
                 elif TARGET_STATUS == 'SIGHTED':
                     if x_state == ord('R'):
                         motor_cmd = motor_lib.ROT_R_CMD
@@ -101,8 +108,8 @@ if __name__ == "__main__":
                 with motor:
                     motor.write_then_readinto(motor_cmd, read_buff)
 
-                print(f'{TARGET_STATUS}')
-                time.sleep(0.3)
+                # print(f'{TARGET_STATUS}')
+                time.sleep(0.1)
 
         finally:
             with motor:

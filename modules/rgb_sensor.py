@@ -25,19 +25,13 @@ if __name__ == "__main__":
             rgb_left = adafruit_tcs34725.TCS34725(mux[7])
             rgb_right = adafruit_tcs34725.TCS34725(mux[5])
 
-
             while 1:
                 #read rgbs
-                r1, g1, b1 = rgb_left.color_rgb_bytes
-                lux_l = rgb_left.lux
-                r2, g2, b2 = rgb_right.color_rgb_bytes
-                lux_r = rgb_right.lux
-                left_edge = lux_l>700
-                right_edge = lux_r>700
+                rl, gl, bl, cl = rgb_left.color_raw
+                rr, gr, br, cr = rgb_right.color_raw
                 if loop_count%4 == 0:
-                    print(f'Lux L:{lux_l:.1f}, R:{lux_r:.1f}')
-                    print(f'RGB L:({r1},{g1},{b1}), R:({r2},{g2},{b2})')
-
+                    print(f'Left:  R:{rl} G:{gl} B:{bl} C:{cl}')
+                    print(f'Right: R:{rr} G:{gr} B:{br} C:{cr}')
                 time.sleep(0.24)
                 loop_count += 1
     except KeyboardInterrupt:

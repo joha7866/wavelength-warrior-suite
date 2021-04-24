@@ -45,10 +45,15 @@ if __name__ == "__main__":
 
             while 1:
                 #read rgbs
-                lux_l = rgb_left.lux
-                lux_r = rgb_right.lux
-                left_edge = lux_l>700
-                right_edge = lux_r>700
+                rl, gl, bl, cl = rgb_left.color_raw
+                rr, gr, br, cr = rgb_right.color_raw
+
+                left_purple = 50>=cl>17 and 25>=rl>8
+                right_purple = 50>=cr>17 and 25>=rr>8
+                left_yellow = cl>50 and rl>25
+                right_yellow = cr>50 and rr>25
+                left_edge = left_yellow or left_purple
+                right_edge = right_yellow or right_purple
                 # if loop_count%200 == 0:
                 #     print(f'Lux L:{lux_l:.1f}, R:{lux_r:.1f}')
                 #     print(f'State: {STATE}')
@@ -108,6 +113,7 @@ if __name__ == "__main__":
                         STATE = 'CHECK_RIGHT'
                     else:
                         STATE = 'ERROR'
+
                 elif STATE == 'CHECK_LEFT':
                     if left_edge:
                         #stop cmd
@@ -181,8 +187,6 @@ if __name__ == "__main__":
                     print('!Hit Error State')
                     time.sleep(30)
 
-                # print(f'{STATE}')
-                time.sleep(0.02)
                 loop_count += 1
     except KeyboardInterrupt:
         with motor:
