@@ -16,8 +16,28 @@ import adafruit_hcsr04
 from adafruit_bus_device.i2c_device import I2CDevice
 
 import modules.motor_smbus as motor_lib
+from modules.robot import Robot
 
 if __name__ == "__main__":
     with busio.I2C(board.SCL, board.SDA) as bus:
         robot = Robot(bus)
-        robot.do_align()
+        start_ts = time.time()
+
+        try:
+            while time.time() < start_ts +30.0:
+                # robot.do_align()
+                # robot.do_turn(dir='left')
+                # robot.do_align()
+                # robot.do_turn(dir='right')
+                # robot.cross_purples(count=2)
+                robot.follow()
+                # robot.do_turn(dir='left')
+                # robot.do_align()
+                robot.stop()
+                print('done')
+                break
+        except KeyboardInterrupt:
+            pass
+
+        robot.stop()
+
