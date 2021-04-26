@@ -26,7 +26,7 @@ if __name__ == "__main__":
         while time.time() < start_ts + 30.0:
 
             try:
-                robot.do_forward_with_deflect()
+                robot.do_fwd_deflect_edge(pcount=2)
                 # robot.do_align()
                 # robot.do_turn(dir='left')
                 # robot.do_align()
