@@ -118,11 +118,22 @@ class GetBlocksMsg(I2cMsg):
 
 
 def Pixy(object):
-    def __init__(self, bus):
+    def __init__(self, bus, team='red'):
+        if team == 'blue':
+            sigmap = USE_BLUE_SIGMAP
+        elif team == 'red':
+            sigmap = USE_RED_SIGMAP
+        else:
+            raise Exception('Bad team defined for pixy module')
+
         self.pixy = I2CDevice(self.mux[4], pixy_lib.PIXY_ADDR)
         self.x_state = None
         self.y_state = None
         self.size_state = None
+
+        version_req_cmd = bytearray([0xae, 0xc1, 0x0e, 0x00])
+        get_blocks_cmd = bytearray([0xae, 0xc1, 0x20, 0x02, sigmap, 0x01])
+
 
     def evaluate_cc_block(self, block_msg):
         x_position = block_msg.get_x_position()
@@ -144,10 +155,10 @@ def Pixy(object):
         else:
             y_state = 'G'
 
-        if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
-                height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
-            size_state = 'C'
-        elif (width > MAP_X_LENGTH*MAP_SIZE_TOL or
+        # if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
+        #         height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
+        #     size_state = 'C'
+        if (width > MAP_X_LENGTH*MAP_SIZE_TOL or
                 height > MAP_Y_LENGTH*MAP_SIZE_TOL):
             size_state = 'G'
         else:
