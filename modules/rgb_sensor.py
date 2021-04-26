@@ -15,6 +15,26 @@ import adafruit_tcs34725
 from adafruit_bus_device.i2c_device import I2CDevice
 
 
+def RgbSensor(object):
+    def __init__(self, bus):
+        self.sensor = adafruit_tcs34725.TCS34725(bus)
+
+    @property
+    def black(self):
+        r, g, b, c = self.sensor.color_raw
+        return (c<17 or r<8)
+
+    @property
+    def purple(self):
+        r, g, b, c = self.sensor.color_raw
+        return (50>=c>17 and 25>=r>8)
+
+    @property
+    def yellow(self):
+        r, g, b, c = self.sensor.color_raw
+        return (c>50 and r>25)
+
+
 if __name__ == "__main__":
     try:
         read_buff = bytearray(16)

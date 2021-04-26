@@ -15,6 +15,7 @@ import modules.motor_smbus as motor_lib
 import modules.imu as imu_lib
 import modules.pixy_smbus as pixy_lib
 import modules.laser as laser_lib
+import modules.rgb_sensor as rgb_lib
 
 class Robot(object):
     def __init__(self, bus):
@@ -22,15 +23,15 @@ class Robot(object):
 
         self.mux = adafruit_tca9548a.TCA9548A(bus)
         self.imu = lsm6dsox.LSM6DSOX(self.mux[2])
-        self.rgb_left = adafruit_tcs34725.TCS34725(self.mux[7])
-        self.rgb_right = adafruit_tcs34725.TCS34725(self.mux[5])
+        self.rgb_left = rgb_lib.RgbSensor(self.mux[7])
+        self.rgb_center = rgb_lib.RgbSensor(self.mux[6])
+        self.rgb_right = rgb_lib.RgbSensor(self.mux[5])
         self.motor = motor_lib.MotorController(self.mux[0])
         self.laser = laser_lib.LaserController(self.mux[3])
-        self.pixy = I2CDevice(self.mux[4], pixy_lib.PIXY_ADDR)
-    
+        self.pixy = pixy_lib.Pixy(self.mux[4])
+
     def do_turn(self, dir='left', timeout=10):
         '''test'''
-
         if dir=='left':
             angle = math.pi/2
         else:
@@ -52,27 +53,45 @@ class Robot(object):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
         hit_count = 0
         while 1:
-            #read rgbs
-            rl, gl, bl, cl = self.rgb_left.color_raw
-            rr, gr, br, cr = self.rgb_right.color_raw
-
-            left_purple = 50>=cl>17 and 25>=rl>8
-            right_purple = 50>=cr>17 and 25>=rr>8
-            left_yellow = cr>50 and rl>25
-            right_yellow = cr>50 and rr>25
-
-            if left_yellow or right_yellow:
+            if self.rgb_left.yellow or self.rgb_right.yellow:
                 self.motor.send_cmd(motor_lib.STOP_CMD)
                 print('stopped on edge')
                 return -1
 
-            if left_purple or right_purple:
+            if self.rgb_left.purple or self.rgb_right.yellow:
                 hit_count += 1
                 if hit_count >= count:
                     self.motor.send_cmd(motor_lib.STOP_CMD)
-                    print('thru')
                     return 0
                 time.sleep(0.4)
+
+    def do_forward(self):
+        self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
+    def do_forward_with_deflect(self, timeout=10.0):
+        self.motor.send_cmd(motor_lib.FORWARD_CMD)
+        start_ts = time.time()
+
+        while time.time() < start_ts + timeout:
+
+            if self.rgb_left.yellow:
+                self.motor.send_cmd(motor_lib.ROT_R_CMD)
+                while self.rgb_left.yellow:
+                    pass
+                self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
+            elif self.rgb_right.yellow:
+                self.motor.send_cmd(motor_lib.ROT_L_CMD)
+                while self.rgb_left.yellow:
+                    pass
+                self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
+            else:
+                pass
+
+        self.motor.send_cmd(motor_lib.STOP_CMD)
+        print('!TIMEOUT')
+        return -1
 
 
     def do_align(self, timeout=10):
@@ -87,25 +106,30 @@ class Robot(object):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
 
         while time.time() < start_ts+timeout:
-            #read rgbs
-            lux_l = self.rgb_left.lux
-            lux_r = self.rgb_right.lux
-            left_edge = lux_l>700
-            right_edge = lux_r>700
+            if self.rgb_left.black and self.rgb_right.black:
+                pass
+            else:
+                if self.rgb_left.yellow or self.rgb_left.yellow:
+                    align_color = 'yellow'
+                else:
+                    align_color = 'purple'
+                self.motor.send_cmd(motor_lib.STOP_CMD)
+                state = 'BACKING'
+                break
 
-            #apply motor logic
+        while time.time() < start_ts+timeout:
+            if align_color == 'purple':
+                left_edge = self.rgb_left.purple
+                right_edge = self.rgb_right.purple
+            else:
+                left_edge = self.rgb_left.yellow
+                right_edge = self.rgb_right.yellow
+
             if left_edge and right_edge:
                 self.motor.send_cmd(motor_lib.STOP_CMD)
                 state = 'DONE'
 
-            if state == 'TRAVELLING':
-                if not left_edge and not right_edge:
-                    pass
-                else:
-                    self.motor.send_cmd(motor_lib.STOP_CMD)
-                    state = 'BACKING'
-
-            elif state == 'BACKING':
+            if state == 'BACKING':
                 if left_edge:
                     #Diag over BR burst
                     self.motor.send_cmd(motor_lib.DIAG_BR_CMD)
@@ -160,6 +184,7 @@ class Robot(object):
 
             else:
                 print('!Bad State Logic')
+                self.motor.send_cmd(motor_lib.STOP_CMD)
                 return -3
 
             if state == 'ERROR':
@@ -181,14 +206,7 @@ class Robot(object):
         TARGET_STATUS = 'NONE'
         while 1:
             #rgb logic
-            rl, gl, bl, cl = self.rgb_left.color_raw
-            rr, gr, br, cr = self.rgb_right.color_raw
-
-            left_purple = 50>=cl>17 and 25>=rl>8
-            right_purple = 50>=cr>17 and 25>=rr>8
-            left_yellow = cl>50 and rl>25
-            right_yellow = cr>50 and rr>25
-            EDGE_DETECTED = left_yellow or right_yellow
+            EDGE_DETECTED = self.rgb_left.yellow or self.rgb_right.yellow
 
             #pixy logic
             with self.pixy:
@@ -243,9 +261,23 @@ class Robot(object):
     def test_fire(self):
         self.motor.send_cmd(motor_lib.STOP_CMD)
         self.laser.send_cmd(bytearray([ord('T')]))
+        start_ts = time.time()
         #while pixy sees balloon loop
         #Then send c
-        time.sleep(4)
+        object_present = True
+        while object_present and time.time < start_ts + 4.5:
+            with self.pixy:
+                self.pixy.write_then_readinto(bytearray(pixy_lib.get_blocks_cmd), read_buff)
+            block_msg = pixy_lib.GetBlocksMsg(read_buff)
+            if block_msg.type_code == 33 and block_msg.payload_length > 0:
+                [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
+                if x_state != ord('G') or y_state != ord('G') or size_state != ord('G'):
+                    object_present = False
+                else:
+                    object_present = True
+            else:
+                object_present = False
+        self.laser.send_cmd(bytearray([ord('C')]))
         return
 
 if __name__ == '__main__':

@@ -23,8 +23,9 @@ if __name__ == "__main__":
         robot = Robot(bus)
         start_ts = time.time()
 
-        try:
-            while time.time() < start_ts +30.0:
+        while time.time() < start_ts + 30.0:
+
+            try:
                 robot.do_align()
                 robot.do_turn(dir='left')
                 robot.do_align()
@@ -37,8 +38,12 @@ if __name__ == "__main__":
                 robot.stop()
                 print('done')
                 break
-        except KeyboardInterrupt:
-            pass
+            except KeyboardInterrupt:
+                print('!Interrupt')
+                break
+            except IOError:
+                print('!IOerror')
+                break
 
         robot.stop()
 

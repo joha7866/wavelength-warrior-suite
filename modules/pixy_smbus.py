@@ -73,6 +73,23 @@ class GetVersionMsg(I2cMsg):
 
 class GetBlocksMsg(I2cMsg):
     '''Implementation of getBLocks(sigmap,maxBlocks) from Pixy documentation'''
+    def __init__(self, msg):
+        self.parse(list(msg))
+
+        self.num_blocks = self.payload_length//14
+
+        self.signature = self.get_signature()
+        self.x = self.get_x_position()
+        self.y = self.get_y_position()
+        self.width = self.get_width()
+        self.height = self.get_height()
+        self.cc_angle = self.get_cc_angle()
+        self.tracking_index = self.get_tracking_index()
+        self.age = self.get_age()
+
+    def Block(object):
+        def __init__(self, payload):
+
     def get_signature(self):
         return self.payload[1]*16^2+self.payload[0]
     
@@ -98,40 +115,45 @@ class GetBlocksMsg(I2cMsg):
         return self.payload[13]
 
 
-def evaluate_cc_block(block_msg):
-    x_state = 0
-    y_state = 0
-    size_state = 0
 
-    x_position = block_msg.get_x_position()
-    y_position = block_msg.get_y_position()
-    width = block_msg.get_width()
-    height = block_msg.get_height()
 
-    if x_position < X_LOWER:
-        x_state = 'L'
-    elif x_position > X_UPPER:
-        x_state = 'R'
-    else:
-        x_state = 'G'
+def Pixy(object):
+    def __init__(self, bus):
+        self.pixy = I2CDevice(self.mux[4], pixy_lib.PIXY_ADDR)
+        self.x_state = None
+        self.y_state = None
+        self.size_state = None
 
-    if y_position < Y_LOWER:
-        y_state = 'U'
-    elif y_position > Y_UPPER:
-        y_state = 'D'
-    else:
-        y_state = 'G'
+    def evaluate_cc_block(self, block_msg):
+        x_position = block_msg.get_x_position()
+        y_position = block_msg.get_y_position()
+        width = block_msg.get_width()
+        height = block_msg.get_height()
 
-    if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
-            height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
-        size_state = 'C'
-    elif (width > MAP_X_LENGTH*MAP_SIZE_TOL or
-            height > MAP_Y_LENGTH*MAP_SIZE_TOL):
-        size_state = 'G'
-    else:
-        size_state = 'F'
+        if x_position < X_LOWER:
+            x_state = 'L'
+        elif x_position > X_UPPER:
+            x_state = 'R'
+        else:
+            x_state = 'G'
 
-    return [ord(x_state), ord(y_state), ord(size_state)]
+        if y_position < Y_LOWER:
+            y_state = 'U'
+        elif y_position > Y_UPPER:
+            y_state = 'D'
+        else:
+            y_state = 'G'
+
+        if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
+                height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
+            size_state = 'C'
+        elif (width > MAP_X_LENGTH*MAP_SIZE_TOL or
+                height > MAP_Y_LENGTH*MAP_SIZE_TOL):
+            size_state = 'G'
+        else:
+            size_state = 'F'
+
+        return [ord(x_state), ord(y_state), ord(size_state)]
 
 
 if __name__ == '__main__':
