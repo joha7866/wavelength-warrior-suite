@@ -18,6 +18,7 @@ import modules.laser as laser_lib
 import modules.rgb_sensor as rgb_lib
 
 class Robot(object):
+    '''This class implements the roboot in terms of sensors and actions.'''
     def __init__(self, bus):
         self.bus = bus
 
@@ -28,27 +29,25 @@ class Robot(object):
         self.rgb_right = rgb_lib.RgbSensor(self.mux[5])
         self.motor = motor_lib.MotorController(self.mux[0])
         self.laser = laser_lib.LaserController(self.mux[3])
-        self.pixy = pixy_lib.Pixy(self.mux[4])
+        self.pixy = pixy_lib.Pixy(self.mux[4], team='red')
 
-    def do_turn(self, dir='left', timeout=10):
-        '''test'''
-        if dir=='left':
-            angle = math.pi/2
-        else:
-            angle = -math.pi/2
 
-        #burst back
-        self.motor.send_cmd(motor_lib.BACKWARD_CMD)
+    def do_motor_burst(self, cmd):
+        self.motor.send_cmd(cmd)
         time.sleep(0.5)
         self.motor.send_cmd(motor_lib.STOP_CMD)
 
+
+    def do_turn(self, angle=math.pi/2, timeout=10):
+        '''test'''
         imu_lib.eval_angle(self.imu, self.motor, angle)
 
 
     def stop(self):
         ''''''
-        if self.motor.active_cmd != motor_lib.STOP_CMD[0]:
+        if ord(self.motor.active_cmd) != motor_lib.STOP_CMD[0]:
             self.motor.send_cmd(motor_lib.STOP_CMD)
+
 
     def cross_purples(self, count=2):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
@@ -66,8 +65,10 @@ class Robot(object):
                     return 0
                 time.sleep(0.4)
 
+
     def do_forward(self):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
 
     def do_forward_with_deflect(self, timeout=10.0):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
@@ -95,7 +96,8 @@ class Robot(object):
         return -1
 
 
-    def do_fwd_deflect_edge(self, timeout=10.0, pcount=1):
+    def do_fwd_deflect_edge(self, timeout=10.0, stop_purple=1):
+        ''''''
         counter = 0
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
         start_ts = time.time()
@@ -118,20 +120,49 @@ class Robot(object):
                 else:
                     pass
 
-            if self.rgb_center.yellow:
-                self.motor.send_cmd(motor_lib.STOP_CMD)
-                return pcount-counter
-
-            if pcount > 0:
+            if stop_purple > 0:
                 if self.rgb_center.purple:
                     counter += 1
-                    if counter >= pcount:
+                    if counter >= stop_purple:
                         self.motor.send_cmd(motor_lib.STOP_CMD)
                         return 0
+
+            if self.rgb_center.yellow:
+                self.motor.send_cmd(motor_lib.STOP_CMD)
+                return purple_count-counter
 
         self.motor.send_cmd(motor_lib.STOP_CMD)
         print('!TIMEOUT')
         return -1
+
+
+    def leave_start(self, timeout=10):
+        '''This is a brute-force action to exit the starting area.'''
+        start_ts = time.time()
+
+        while time.time() < start_ts + timeout:
+            #go forward
+            self.do_forward()
+            #continue forward until any rgb_event
+            while self.rgb_left.black and self.rgb_center.black and self.rgb_right.black:
+                pass
+            #stop
+            self.stop()
+
+            #finish if purple (we're on the main strech now)
+            if self.rgb_center.purple:
+                return 0
+            #else align
+            else:
+                self.do_align
+
+            #check again after the align
+            if self.rgb_center.purple:
+                return 0
+
+            #burst backward and turn 90 degrees right to try the next wall
+            self.do_motor_burst(motor_lib.BACKWARD_CMD)
+            self.do_turn(motor_lib.RIGHT_90_DIR)
 
 
     def do_align(self, timeout=10):
@@ -238,23 +269,22 @@ class Robot(object):
         print('!Timeout')
         return -1
 
+
     def follow(self):
         ''''''
         read_buff=bytearray(16)
         pixy_ts = time.time()
         EDGE_DETECTED = False
         TARGET_STATUS = 'NONE'
-        while 1:
-            #rgb logic
-            EDGE_DETECTED = self.rgb_left.yellow or self.rgb_right.yellow
 
+        while 1:
             #pixy logic
             with self.pixy:
-                self.pixy.write_then_readinto(bytearray(pixy_lib.get_blocks_cmd), read_buff)
+                self.pixy.write_then_readinto(self.pixy.get_blocks_cmd, read_buff)
             block_msg = pixy_lib.GetBlocksMsg(read_buff)
             if block_msg.type_code == 33 and block_msg.payload_length > 0:
                 pixy_ts = time.time()
-                [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
+                [x_state, _, size_state] = self.pixy.evaluate_cc_block(block_msg)
                 if x_state == ord('G') and size_state == ord('G'):
                     TARGET_STATUS = 'LOCKED'
                 elif x_state == ord('G'):
@@ -271,8 +301,7 @@ class Robot(object):
             # Motor Logic
             if TARGET_STATUS == 'LOCKED':
                 motor_cmd = motor_lib.STOP_CMD
-                print("I: Motor Logic has achieved objective")
-                return
+                return 0
             elif TARGET_STATUS == 'CENTERED' and not EDGE_DETECTED:
                 motor_cmd = motor_lib.FORWARD_CMD
             elif TARGET_STATUS == 'RANGED':
@@ -289,28 +318,31 @@ class Robot(object):
                 elif x_state == ord('L'):
                     motor_cmd = motor_lib.ROT_L_CMD
                 else:
-                    print('E: bad in-sight logic')
+                    # print('E: bad in-sight logic')
+                    pass
+
             else:
                 motor_cmd = motor_lib.ROT_R_CMD
 
             self.motor.send_cmd(motor_cmd)
 
             # print(f'{TARGET_STATUS}')
-            time.sleep(0.1)
-    
-    def test_fire(self):
+            time.sleep(0.01)
+
+
+    def fire(self, cmd=laser_lib.LASER_TEST_CMD):
         self.motor.send_cmd(motor_lib.STOP_CMD)
-        self.laser.send_cmd(bytearray([ord('T')]))
+        self.laser.send_cmd(cmd)
         start_ts = time.time()
         #while pixy sees balloon loop
         #Then send c
         object_present = True
-        while object_present and time.time < start_ts + 4.5:
+        while object_present and time.time() < start_ts + 4.5:
             with self.pixy:
-                self.pixy.write_then_readinto(bytearray(pixy_lib.get_blocks_cmd), read_buff)
+                self.pixy.write_then_readinto(self.pixy.get_blocks_cmd, read_buff)
             block_msg = pixy_lib.GetBlocksMsg(read_buff)
             if block_msg.type_code == 33 and block_msg.payload_length > 0:
-                [x_state, y_state, size_state] = pixy_lib.evaluate_cc_block(block_msg)
+                [x_state, y_state, size_state] = self.pixy.evaluate_cc_block(block_msg)
                 if x_state != ord('G') or y_state != ord('G') or size_state != ord('G'):
                     object_present = False
                 else:
@@ -318,7 +350,12 @@ class Robot(object):
             else:
                 object_present = False
         self.laser.send_cmd(bytearray([ord('C')]))
-        return
+        
+        if time.time() >= start_ts + 4.5:
+            return -1
+        else:
+            return 0
+
 
 if __name__ == '__main__':
     pass

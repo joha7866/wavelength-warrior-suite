@@ -15,7 +15,23 @@ with busio.I2C(board.SCL, board.SDA) as bus:
 
     while True:
         while switch.value is True:
-            robot.do_forward_with_deflect(timeout=2.0)
+            robot.leave_start() #leaves you at intersection
+            if switch.value is False:
+                break
+            robot.do_motor_burst(motor_lib.FORWARD_CMD) #enter intersection
+            if switch.value is False:
+                break
+            robot.do_align() #aligns to far side
+            if switch.value is False:
+                break
+            robot.do_turn(angle=motor_lib.RIGHT_90_DIR)
+            if switch.value is False:
+                break
+            robot.follow()
+            if switch.value is False:
+                break
+            robot.fire(cmd=laser_lib.LASER_TEST_CMD)
+            sys.exit()
         print('STOP')
         robot.stop()
         while switch.value is False:

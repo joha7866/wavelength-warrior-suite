@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 '''This module implements command definitions for the motor driver I2C communications.'''
 import time
+import math
 import board
 import busio
 import adafruit_tca9548a
@@ -24,6 +25,11 @@ DIAG_BR_CMD = bytearray([ord(ch) for ch in 'DBR'])
 STOP_CMD = bytearray([ord('S')])
 ERROR_CMD = bytearray([ord('E')])
 POLL_CMD = bytearray([ord('.')])
+
+LEFT_90_DIR = math.pi/2
+RIGHT_90_DIR = -math.pi/2
+LEFT_180_DIR = math.pi
+RIGHT_180_DIR = math.pi
 
 # ROT_90_DELAY = 1.33
 ROT_90_DELAY = 1.45
