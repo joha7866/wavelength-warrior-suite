@@ -95,6 +95,45 @@ class Robot(object):
         return -1
 
 
+    def do_fwd_deflect_edge(self, timeout=10.0, pcount=1):
+        counter = 0
+        self.motor.send_cmd(motor_lib.FORWARD_CMD)
+        start_ts = time.time()
+
+        while time.time() < start_ts + timeout:
+            while self.rgb_center.black and time.time() < start_ts + timeout:
+
+                if self.rgb_left.yellow:
+                    self.motor.send_cmd(motor_lib.ROT_R_CMD)
+                    while self.rgb_left.yellow:
+                        pass
+                    self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
+                elif self.rgb_right.yellow:
+                    self.motor.send_cmd(motor_lib.ROT_L_CMD)
+                    while self.rgb_left.yellow:
+                        pass
+                    self.motor.send_cmd(motor_lib.FORWARD_CMD)
+
+                else:
+                    pass
+
+            if self.rgb_center.yellow:
+                self.motor.send_cmd(motor_lib.STOP_CMD)
+                return pcount-counter
+
+            if pcount > 0:
+                if self.rgb_center.purple:
+                    counter += 1
+                    if counter >= pcount:
+                        self.motor.send_cmd(motor_lib.STOP_CMD)
+                        return 0
+
+        self.motor.send_cmd(motor_lib.STOP_CMD)
+        print('!TIMEOUT')
+        return -1
+
+
     def do_align(self, timeout=10):
         '''Classified align behavior.
         Return 1 if success 0 if timeout.
