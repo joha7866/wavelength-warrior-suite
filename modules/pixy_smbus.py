@@ -87,8 +87,8 @@ class GetBlocksMsg(I2cMsg):
         self.tracking_index = self.get_tracking_index()
         self.age = self.get_age()
 
-    def Block(object):
-        def __init__(self, payload):
+    # def Block(object):
+    #     def __init__(self, payload):
 
     def get_signature(self):
         return self.payload[1]*16^2+self.payload[0]

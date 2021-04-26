@@ -15,7 +15,7 @@ import adafruit_tcs34725
 from adafruit_bus_device.i2c_device import I2CDevice
 
 
-def RgbSensor(object):
+class RgbSensor(object):
     def __init__(self, bus):
         self.sensor = adafruit_tcs34725.TCS34725(bus)
 

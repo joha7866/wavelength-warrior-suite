@@ -47,7 +47,8 @@ class Robot(object):
 
     def stop(self):
         ''''''
-        self.motor.send_cmd(motor_lib.STOP_CMD)
+        if self.motor.active_cmd != motor_lib.STOP_CMD[0]:
+            self.motor.send_cmd(motor_lib.STOP_CMD)
 
     def cross_purples(self, count=2):
         self.motor.send_cmd(motor_lib.FORWARD_CMD)

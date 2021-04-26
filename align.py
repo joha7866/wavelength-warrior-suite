@@ -26,13 +26,14 @@ if __name__ == "__main__":
         while time.time() < start_ts + 30.0:
 
             try:
-                robot.do_align()
-                robot.do_turn(dir='left')
-                robot.do_align()
-                robot.do_turn(dir='right')
-                robot.cross_purples(count=2)
-                robot.follow()
-                robot.test_fire()
+                robot.do_forward_with_deflect()
+                # robot.do_align()
+                # robot.do_turn(dir='left')
+                # robot.do_align()
+                # robot.do_turn(dir='right')
+                # robot.cross_purples(count=2)
+                # robot.follow()
+                # robot.test_fire()
                 # robot.do_turn(dir='left')
                 # robot.do_align()
                 robot.stop()
