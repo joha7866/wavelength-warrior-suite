@@ -22,6 +22,8 @@ DIAG_FL_CMD = bytearray([ord(ch) for ch in 'DFL'])
 DIAG_FR_CMD = bytearray([ord(ch) for ch in 'DFR'])
 DIAG_BL_CMD = bytearray([ord(ch) for ch in 'DBL'])
 DIAG_BR_CMD = bytearray([ord(ch) for ch in 'DBR'])
+TRAN_L_CMD = bytearray([ord(ch) for ch in 'TL'])
+TRAN_R_CMD = bytearray([ord(ch) for ch in 'TR'])
 STOP_CMD = bytearray([ord('S')])
 ERROR_CMD = bytearray([ord('E')])
 POLL_CMD = bytearray([ord('.')])
@@ -29,7 +31,7 @@ POLL_CMD = bytearray([ord('.')])
 LEFT_90_DIR = math.pi/2
 RIGHT_90_DIR = -math.pi/2
 LEFT_180_DIR = math.pi
-RIGHT_180_DIR = math.pi
+RIGHT_180_DIR = -math.pi
 
 # ROT_90_DELAY = 1.33
 ROT_90_DELAY = 1.45
