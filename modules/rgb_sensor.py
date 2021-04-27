@@ -22,17 +22,17 @@ class RgbSensor(object):
     @property
     def black(self):
         r, g, b, c = self.sensor.color_raw
-        return (c<17 or r<8)
+        return (c<16 or r<7)
 
     @property
     def purple(self):
         r, g, b, c = self.sensor.color_raw
-        return (50>=c>17 and 25>=r>8)
+        return (50>=c>16 and 24>=r>7)
 
     @property
     def yellow(self):
         r, g, b, c = self.sensor.color_raw
-        return (c>50 and r>25)
+        return (c>50 and r>24)
 
 
 if __name__ == "__main__":
@@ -43,14 +43,17 @@ if __name__ == "__main__":
         with busio.I2C(board.SCL, board.SDA) as bus:
             mux = adafruit_tca9548a.TCA9548A(bus)
             rgb_left = adafruit_tcs34725.TCS34725(mux[7])
+            rgb_center = adafruit_tcs34725.TCS34725(mux[6])
             rgb_right = adafruit_tcs34725.TCS34725(mux[5])
 
             while 1:
                 #read rgbs
                 rl, gl, bl, cl = rgb_left.color_raw
+                rc, gc, bc, cc = rgb_center.color_raw
                 rr, gr, br, cr = rgb_right.color_raw
                 if loop_count%4 == 0:
                     print(f'Left:  R:{rl} G:{gl} B:{bl} C:{cl}')
+                    print(f'Center: R:{rc} G:{gc} B:{bc} C:{cc}')
                     print(f'Right: R:{rr} G:{gr} B:{br} C:{cr}')
                 time.sleep(0.24)
                 loop_count += 1
