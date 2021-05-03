@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-''''''
+'''This module implements a class for the Laser Controller Arduino.
+This class essentially wraps the adafruit I2CDevice class, providing an easier send_cmd() for other modules.
+
+The command interface defined is T, P, and C, however any character on the line other than T or P will serve as a
+cancel cmd.
+
+Current Debug:
+- Set up I2C Mux and LaserController devices.
+- Run command line interface to interact with Laser Driver.
+'''
 import time
 import board
 import busio

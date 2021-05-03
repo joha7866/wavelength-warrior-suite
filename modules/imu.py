@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+'''This modules implements the Adafruit LSM6DSOX IMU.
+
+Key behaviors to accomplish are:
+- Turn as exactly an input angle as possible.
+- Mark a start and integrate gyro over time to evaluate angle of arbitrary turn.
+- Mark and start and double integrate accelerometer over time to evaluate distance of arbitrary start/stop.
+
+Current Debug Functionality:
+- Setup mux, motor driver, IMU
+- Run 90, 180, 360 turns for visual verification.
+'''
 import time
 import math
 import board
@@ -31,6 +43,11 @@ def Travel(distance):
                 motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
 
 def eval_angle(imu, motor, input_angle):
+    '''Rotate exactly a given angle
+    imu: imu object
+    motor: motor ctrl object
+    input_angle: input angle in rad/s
+    '''
     read_buff = bytearray(16)
     if input_angle < 0:
          motor.send_cmd(motor_lib.ROT_R_CMD)
@@ -129,27 +146,25 @@ if __name__ == "__main__":
         imu = lsm6dsox.LSM6DSOX(mux[2])
         motor = I2CDevice(mux[0], motor_lib.MOTOR_CTRL_ADDR, probe=False)
 
-    try:
-        R90()
-        print("Finished right turn!")
-        L90()
-        print("Finished left turn!")
-        T180()
-        print("Turned 180!")
-        # Travel(40)
-        T360()
-        print("Turned 360!")
+        try:
+            R90()
+            print("Finished right turn!")
+            L90()
+            print("Finished left turn!")
+            T180()
+            print("Turned 180!")
+            # Travel(40)
+            T360()
+            print("Turned 360!")
 
-    except KeyboardInterrupt:
-        with motor:
-            motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
-        print('exited gracefully')
-    
-
-    #     read_buff = bytearray(16)
+        except KeyboardInterrupt:
+            with motor:
+                motor.write_then_readinto(motor_lib.STOP_CMD, read_buff)
+            print('exited gracefully')
         
-    #     last_angle = eval_angle(imu, motor, -(math.pi/2))
-    #     return_angle = last_angle*-1
-    #     eval_angle(imu,motor,return_angle)
 
-
+        #     read_buff = bytearray(16)
+            
+        #     last_angle = eval_angle(imu, motor, -(math.pi/2))
+        #     return_angle = last_angle*-1
+        #     eval_angle(imu,motor,return_angle)

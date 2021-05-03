@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-'''This program attempts to legally navigate the course and lock a target.
-
-It is a fundamental behavior program that:
- - Implements the RGB, Pixy, and US sensors
- - Actuates the motors
- - Attempts to navigate the course legally (but not necessarily logically)
-'''
+'''A testing script to evaluate action flows without accidentally running them at startup.'''
 import sys
 import time
 import board

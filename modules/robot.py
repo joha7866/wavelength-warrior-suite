@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-'''This module'''
+'''This module implements the core class of the Wavelength Warrior.
+In general, the goal was to implement an object-oriented design of our robot: with data structures containing each
+module on board, and methods serving as behaviors coordinating those modules.
+
+Robot's __init__() will take in the bus and implement all sensor and actuator devices on it.
+Then Robot's methods are each a behavior, ready to be called in a human-readable list in a "brain" script.
+
+TODO: Debug for robot.py is written in test_action, but should probably live here.
+'''
 import time
 import sys
 import math
@@ -18,7 +26,7 @@ import modules.laser as laser_lib
 import modules.rgb_sensor as rgb_lib
 
 class Robot(object):
-    '''This class implements the roboot in terms of sensors and actions.'''
+    '''This class implements the roboot in terms of devices and actions.'''
     def __init__(self, bus):
         self.bus = bus
 
@@ -95,7 +103,7 @@ class Robot(object):
 
 
     def do_fwd_deflect_edge(self, timeout=10.0, stop_purple=1):
-        ''''''
+        '''Drive forward, deflect off of lane edges with the side RGBs, and stop if the center RGB has an event.'''
         counter = 0
         self.motor.send_cmd(motor_lib.FORWARD_CMD)
         start_ts = time.time()
@@ -167,7 +175,7 @@ class Robot(object):
 
 
     def do_align(self, timeout=10):
-        '''Classified align behavior.
+        '''Method to align to a lane edge with the left and right rgbs.
         Return 1 if success 0 if timeout.
         '''
         state = 'TRAVELLING'
@@ -272,7 +280,7 @@ class Robot(object):
 
 
     def do_align_check(self, timeout=10):
-        '''Classified align behavior.
+        '''Align with a check for center RBG to avoid convex corner cases.
         Return 1 if success 0 if timeout.
         '''
         state = 'TRAVELLING'
@@ -382,7 +390,7 @@ class Robot(object):
 
 
     def follow(self, timeout=30.0):
-        ''''''
+        '''Rotate until a reasonable target appears, then center it, then approach it.'''
         read_buff=bytearray(16)
         pixy_ts = time.time()
         EDGE_DETECTED = False
@@ -440,7 +448,7 @@ class Robot(object):
             time.sleep(0.01)
 
     def check(self):
-        ''''''
+        '''Like follow, but without rotating. Identify a valid target, and if it exists center and range it.'''
         read_buff=bytearray(16)
         pixy_ts = time.time()
         EDGE_DETECTED = False
@@ -498,6 +506,7 @@ class Robot(object):
 
 
     def fire(self, cmd=laser_lib.LASER_TEST_CMD):
+        '''Check for a valid target, begin the fire sequence, then monitor for a change in target.'''
         FIRED = False
         self.motor.send_cmd(motor_lib.STOP_CMD)
         start_ts = time.time()

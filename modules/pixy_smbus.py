@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-'''testing'''
+'''This module implements all Pixy camera related classes and functions.
+Some effort was made to provide generic Python definitions for the Pixy I2C message structure, but since only the
+GetBlocks command was used, these structures are unrefined.
+
+The Pixy object wraps Adafruit's I2CDevice and defines a simple command interface and a simple message evaluator.
+
+Current Debug:
+- OUT OF DATE: sets up SMBus(1), does initial version check, polls pixy for color match blocks.
+'''
 import time
 from smbus2 import SMBus, i2c_msg
 from adafruit_bus_device.i2c_device import I2CDevice
@@ -11,6 +19,7 @@ USE_RED_SIGMAP = 0x01
 USE_BLUE_SIGMAP = 0x02
 USE_BOTH_SIGMAP = 0x03
 
+#Pixy Cam image constants
 MAP_X_LENGTH = 316
 MAP_Y_LENGTH = 208
 MAP_X_CENTER_TOL = 0.2
@@ -18,11 +27,13 @@ MAP_Y_CENTER_TOL = 0.2
 MAP_SIZE_CLOSE_TOL = 1.0
 MAP_SIZE_TOL = 0.25
 
+#Pixy Cam x/y bounds
 X_LOWER = MAP_X_LENGTH/2-MAP_X_LENGTH*MAP_X_CENTER_TOL/2
 X_UPPER = MAP_X_LENGTH/2+MAP_X_LENGTH*MAP_X_CENTER_TOL/2
 Y_LOWER = MAP_Y_LENGTH/2-MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 Y_UPPER = MAP_Y_LENGTH/2+MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 
+#Pixy Cam command definitions
 version_req_cmd = [0xae, 0xc1, 0x0e, 0x00]
 get_blocks_cmd = [0xae, 0xc1, 0x20, 0x02, USE_BLUE_SIGMAP, 0x01]
 
@@ -119,6 +130,7 @@ class GetBlocksMsg(I2cMsg):
 
 
 class Pixy(object):
+    '''Implements Pixy as an extension of I2CDevice, with command interaction and packet evaluation methods.'''
     def __init__(self, bus, team):
         if team == 'blue':
             sigmap = USE_RED_SIGMAP

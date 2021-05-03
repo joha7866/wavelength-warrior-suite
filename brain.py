@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-''''''
+'''The embedded program for the Wavelength Warrior.
+Initialize the robot, then wait until the automation switch comes on.
+
+The brain is designed for two conditions not LOST and LOST.
+not LOST: A choreographed path through the entire map, attempting to do the check() method at each valid location for
+a balloon.
+LOST: A random action selector, designed to move the robot in small steps and then rotate to check for valid targets.
+
+This should be a very abstract flow: the majority of code should just be calls to the Robot class's implemented
+actions.
+
+NOTE: This script begins on reboot in the chrontab; be sure to kill it before beginning debug.
+'''
 import sys
 import time
 import board
