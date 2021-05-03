@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-'''This program attempts to legally navigate the course and lock a target.
+'''This module implements the RGB sensor device.
+The only extension from Adafruit's TCS34725 object is to add properties for the specific color_raw states of interest.
 
-It is a fundamental behavior program that:
- - Implements the RGB, Pixy, and US sensors
- - Actuates the motors
- - Attempts to navigate the course legally (but not necessarily logically)
+Current Debug:
+- Set up I2C Mux and Left/Center/Right RGB Sensors
+- Poll each rgb sensor for color_raw and print
 '''
 import sys
 import time

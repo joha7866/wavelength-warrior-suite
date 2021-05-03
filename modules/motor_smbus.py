@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-'''This module implements command definitions for the motor driver I2C communications.'''
+'''This module implements command definitions for the motor driver I2C communications.
+All implemented motor commands are defined as constants for use in other modules.
+The MotorController class is a simple wrapper for Adafruit's I2CDevice to simplify sending a command and to track the
+active command.
+
+Current Debug:
+- Set up I2C mux and motor ctrl devices.
+- Run command line interface to interact with Motor Driver.
+'''
 import time
 import math
 import board
