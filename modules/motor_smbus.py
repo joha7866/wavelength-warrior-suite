@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 '''This module implements command definitions for the motor driver I2C communications.'''
 import time
+import math
 import board
 import busio
 import adafruit_tca9548a
@@ -21,12 +22,37 @@ DIAG_FL_CMD = bytearray([ord(ch) for ch in 'DFL'])
 DIAG_FR_CMD = bytearray([ord(ch) for ch in 'DFR'])
 DIAG_BL_CMD = bytearray([ord(ch) for ch in 'DBL'])
 DIAG_BR_CMD = bytearray([ord(ch) for ch in 'DBR'])
+TRAN_L_CMD = bytearray([ord(ch) for ch in 'TL'])
+TRAN_R_CMD = bytearray([ord(ch) for ch in 'TR'])
 STOP_CMD = bytearray([ord('S')])
 ERROR_CMD = bytearray([ord('E')])
 POLL_CMD = bytearray([ord('.')])
 
+LEFT_90_DIR = math.pi/2
+RIGHT_90_DIR = -math.pi/2
+LEFT_180_DIR = math.pi
+RIGHT_180_DIR = -math.pi
+
 # ROT_90_DELAY = 1.33
 ROT_90_DELAY = 1.45
+
+class MotorController(object):
+    def __init__(self, bus):
+        self.motor = I2CDevice(bus, MOTOR_CTRL_ADDR, probe=False)
+        self.active_cmd = 'x'
+
+    def send_cmd(self, cmd):
+        read_buff = bytearray(16)
+
+        with self.motor:
+            self.motor.write_then_readinto(cmd, read_buff)
+        self.active_cmd = read_buff[0]
+
+        if self.active_cmd == cmd[0]:
+            return 0
+        else:
+            return self.active_cmd
+
 
 if __name__ == "__main__":
     read_buff = bytearray(16)

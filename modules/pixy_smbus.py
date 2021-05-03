@@ -2,6 +2,7 @@
 '''testing'''
 import time
 from smbus2 import SMBus, i2c_msg
+from adafruit_bus_device.i2c_device import I2CDevice
 
 PIXY_ADDR = 0x54
 PIXY_SYNC_BYTES = 0xc1ae
@@ -14,8 +15,8 @@ MAP_X_LENGTH = 316
 MAP_Y_LENGTH = 208
 MAP_X_CENTER_TOL = 0.2
 MAP_Y_CENTER_TOL = 0.2
-MAP_SIZE_CLOSE_TOL = 0.9
-MAP_SIZE_TOL = 0.33
+MAP_SIZE_CLOSE_TOL = 1.0
+MAP_SIZE_TOL = 0.25
 
 X_LOWER = MAP_X_LENGTH/2-MAP_X_LENGTH*MAP_X_CENTER_TOL/2
 X_UPPER = MAP_X_LENGTH/2+MAP_X_LENGTH*MAP_X_CENTER_TOL/2
@@ -23,7 +24,7 @@ Y_LOWER = MAP_Y_LENGTH/2-MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 Y_UPPER = MAP_Y_LENGTH/2+MAP_Y_LENGTH*MAP_Y_CENTER_TOL/2
 
 version_req_cmd = [0xae, 0xc1, 0x0e, 0x00]
-get_blocks_cmd = [0xae, 0xc1, 0x20, 0x02, USE_RED_SIGMAP, 0x01]
+get_blocks_cmd = [0xae, 0xc1, 0x20, 0x02, USE_BLUE_SIGMAP, 0x01]
 
 class I2cMsg:
     '''Generic I2cMsg class for parsing and access'''
@@ -73,6 +74,23 @@ class GetVersionMsg(I2cMsg):
 
 class GetBlocksMsg(I2cMsg):
     '''Implementation of getBLocks(sigmap,maxBlocks) from Pixy documentation'''
+    def __init__(self, msg):
+        self.parse(list(msg))
+
+        self.num_blocks = self.payload_length//14
+
+        self.signature = self.get_signature()
+        self.x = self.get_x_position()
+        self.y = self.get_y_position()
+        self.width = self.get_width()
+        self.height = self.get_height()
+        self.cc_angle = self.get_cc_angle()
+        self.tracking_index = self.get_tracking_index()
+        self.age = self.get_age()
+
+    # def Block(object):
+    #     def __init__(self, payload):
+
     def get_signature(self):
         return self.payload[1]*16^2+self.payload[0]
     
@@ -98,40 +116,66 @@ class GetBlocksMsg(I2cMsg):
         return self.payload[13]
 
 
-def evaluate_cc_block(block_msg):
-    x_state = 0
-    y_state = 0
-    size_state = 0
 
-    x_position = block_msg.get_x_position()
-    y_position = block_msg.get_y_position()
-    width = block_msg.get_width()
-    height = block_msg.get_height()
 
-    if x_position < X_LOWER:
-        x_state = 'L'
-    elif x_position > X_UPPER:
-        x_state = 'R'
-    else:
-        x_state = 'G'
+class Pixy(object):
+    def __init__(self, bus, team):
+        if team == 'blue':
+            sigmap = USE_RED_SIGMAP
+        elif team == 'red':
+            sigmap = USE_BLUE_SIGMAP
+        else:
+            raise Exception('Bad team defined for pixy module')
 
-    if y_position < Y_LOWER:
-        y_state = 'U'
-    elif y_position > Y_UPPER:
-        y_state = 'D'
-    else:
-        y_state = 'G'
+        self.pixy = I2CDevice(bus, PIXY_ADDR)
+        self.x_state = None
+        self.y_state = None
+        self.size_state = None
 
-    if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
-            height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
-        size_state = 'C'
-    elif (width > MAP_X_LENGTH*MAP_SIZE_TOL or
-            height > MAP_Y_LENGTH*MAP_SIZE_TOL):
-        size_state = 'G'
-    else:
-        size_state = 'F'
+        self.version_req_cmd = bytearray([0xae, 0xc1, 0x0e, 0x00])
+        self.get_blocks_cmd = bytearray([0xae, 0xc1, 0x20, 0x02, sigmap, 0x01])
 
-    return [ord(x_state), ord(y_state), ord(size_state)]
+    def send_cmd(self, cmd):
+        read_buff=bytearray(32)
+        with self.pixy:
+            self.pixy.write_then_readinto(self.get_blocks_cmd, read_buff)
+        try:
+            block_msg = GetBlocksMsg(read_buff)
+            return block_msg
+        except IndexError:
+            return []
+
+
+    def evaluate_cc_block(self, block_msg):
+        x_position = block_msg.get_x_position()
+        y_position = block_msg.get_y_position()
+        width = block_msg.get_width()
+        height = block_msg.get_height()
+
+        if x_position < X_LOWER:
+            self.x_state = 'L'
+        elif x_position > X_UPPER:
+            self.x_state = 'R'
+        else:
+            self.x_state = 'G'
+
+        if y_position < Y_LOWER:
+            self.y_state = 'U'
+        elif y_position > Y_UPPER:
+            self.y_state = 'D'
+        else:
+            self.y_state = 'G'
+
+        # if (width > MAP_X_LENGTH*MAP_SIZE_CLOSE_TOL or
+        #         height > MAP_Y_LENGTH*MAP_SIZE_CLOSE_TOL):
+        #     size_state = 'C'
+        if (width > MAP_X_LENGTH*MAP_SIZE_TOL or
+                height > MAP_Y_LENGTH*MAP_SIZE_TOL):
+            self.size_state = 'G'
+        else:
+            self.size_state = 'F'
+
+        return [ord(self.x_state), ord(self.y_state), ord(self.size_state)]
 
 
 if __name__ == '__main__':

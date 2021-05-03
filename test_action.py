@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-''''''
+'''This program attempts to legally navigate the course and lock a target.
+
+It is a fundamental behavior program that:
+ - Implements the RGB, Pixy, and US sensors
+ - Actuates the motors
+ - Attempts to navigate the course legally (but not necessarily logically)
+'''
 import sys
 import time
 import board
 import busio
-import digitalio
 from random import randint
 import adafruit_tca9548a
 import adafruit_tcs34725
@@ -15,20 +20,14 @@ import modules.motor_smbus as motor_lib
 from modules.robot import Robot
 import modules.laser as laser_lib
 
-switch=digitalio.DigitalInOut(board.D11)
-switch.direction = digitalio.Direction.INPUT
+if __name__ == "__main__":
+    with busio.I2C(board.SCL, board.SDA) as bus:
+        robot = Robot(bus)
+        start_ts = time.time()
+        LOST = False
 
-with busio.I2C(board.SCL, board.SDA) as bus:
-    robot = Robot(bus)
-    start_ts = time.time()
-    LOST = False
+        while time.time() < start_ts + 30.0:
 
-    while True:
-        while switch.value is False:
-            pass
-        time.sleep(0.3)
-
-        while switch.value is True:
             try:
                 if not LOST:
                     robot.leave_start() #leaves you at intersection
@@ -88,7 +87,7 @@ with busio.I2C(board.SCL, board.SDA) as bus:
                     robot.do_turn(angle=motor_lib.LEFT_90_DIR)
                     robot.do_fwd_deflect_edge(stop_purple=0)
                 else:
-                    choice = randint(0,3)
+                    choice = randint(0,5);
                     if choice == 0:
                         time.sleep(0.5)
                     elif choice == 1:
@@ -100,6 +99,8 @@ with busio.I2C(board.SCL, board.SDA) as bus:
                         robot.follow(timeout=5.0)
                         robot.fire(cmd=laser_lib.LASER_FIRE_CMD)
 
+
+
             except KeyboardInterrupt:
                 print('!Interrupt')
                 break
@@ -108,4 +109,4 @@ with busio.I2C(board.SCL, board.SDA) as bus:
                 LOST = True
 
         robot.stop()
-        time.sleep(0.3)
+
